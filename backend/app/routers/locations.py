@@ -4,8 +4,8 @@ from app.schemas.location import (
     LocationCreate,
     LocationResponse,
 )
-
 from app.db.supabase import supabase
+from app.services.geocoding import reverse_geocode
 
 
 router = APIRouter(
@@ -17,12 +17,19 @@ router = APIRouter(
 @router.post("", response_model=LocationResponse)
 async def create_location(location: LocationCreate):
 
+    address = await reverse_geocode(
+        latitude=location.latitude,
+        longitude=location.longitude,
+    )
+
+    print("Parsed address:", address)
+
     data = {
         "latitude": location.latitude,
         "longitude": location.longitude,
         "accuracy": location.accuracy,
         "recorded_at": location.recorded_at.isoformat(),
-        "address": None,
+        "address": address,
     }
 
     result = (
