@@ -2,9 +2,11 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { services } from '../services';
 import type { LocationPoint } from '../types';
 import { LocationServiceError } from '../services/location/LocationServiceError';
+import { LocationApiError } from '../services/location/LocationApiService';
 import { useLocationPermission } from './useLocationPermission';
 
 export type CurrentLocationStatus = 'IDLE' | 'LOADING' | 'SUCCESS' | 'ERROR' | 'UNAVAILABLE';
+export type LocationSaveStatus = 'IDLE' | 'SAVING' | 'SUCCESS' | 'ERROR';
 
 interface LocationContextValue {
   permissionStatus: ReturnType<typeof useLocationPermission>['permissionStatus'];
@@ -19,6 +21,9 @@ interface LocationContextValue {
   isGettingPosition: boolean;
   isUpdatingTracking: boolean;
   locationError: string | null;
+  locationSaveStatus: LocationSaveStatus;
+  locationSaveError: string | null;
+  lastLocationSavedAt: string | null;
   requestCurrentPosition: () => Promise<void>;
   toggleTracking: () => Promise<void>;
   stopTracking: () => Promise<void>;
@@ -45,6 +50,11 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   const [isGettingPosition, setIsGettingPosition] = useState(false);
   const [isUpdatingTracking, setIsUpdatingTracking] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationSaveStatus, setLocationSaveStatus] = useState<LocationSaveStatus>('IDLE');
+  const [locationSaveError, setLocationSaveError] = useState<string | null>(null);
+  const [lastLocationSavedAt, setLastLocationSavedAt] = useState<string | null>(null);
+  const trackingGeneration = useRef(0);
+  const lastLocationSentAt = useRef(0);
   const positionRequestInProgress = useRef(false);
   const trackingOperationInProgress = useRef(false);
 
@@ -97,6 +107,8 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     setLocationError(null);
     try {
       if (trackingEnabled) {
+        trackingGeneration.current += 1;
+        setLocationSaveStatus('IDLE');
         await services.location.stopTracking();
         setTrackingEnabled(false);
         setLocationStatus(currentPosition ? 'SUCCESS' : 'IDLE');
@@ -111,11 +123,35 @@ export function LocationProvider({ children }: { children: ReactNode }) {
           return;
         }
         setLocationStatus('LOADING');
+        lastLocationSentAt.current = 0;
+        setLocationSaveStatus('IDLE');
+        setLocationSaveError(null);
+        const generation = ++trackingGeneration.current;
         await services.location.startTracking(
           (point) => {
+            if (generation !== trackingGeneration.current || !isValidLocation(point)) return;
             setCurrentPosition(point);
             setLocationStatus('SUCCESS');
             setLocationError(null);
+            if (Date.now() - lastLocationSentAt.current < 30_000) return;
+            lastLocationSentAt.current = Date.now();
+            setLocationSaveStatus('SAVING');
+            setLocationSaveError(null);
+            void services.locationApi.saveLocation(point).then(() => {
+              if (generation !== trackingGeneration.current) return;
+              setLocationSaveStatus('SUCCESS');
+              setLastLocationSavedAt(new Date().toISOString());
+            }).catch((error: unknown) => {
+              if (generation !== trackingGeneration.current) return;
+              setLocationSaveStatus('ERROR');
+              setLocationSaveError(error instanceof LocationApiError && error.kind === 'VALIDATION'
+                ? '서버가 위치 정보 형식을 확인해 달라고 응답했습니다.'
+                : error instanceof LocationApiError && error.kind === 'SERVER'
+                  ? '서버에서 위치를 저장하지 못했습니다.'
+                  : error instanceof LocationApiError && error.kind === 'PROTOCOL'
+                    ? '서버 응답을 확인하지 못했습니다.'
+                    : '네트워크 문제로 위치를 저장하지 못했습니다. 위치 추적은 계속됩니다.');
+            });
           },
           (error) => {
             const result = presentLocationError(error);
@@ -142,6 +178,8 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   }, [currentPosition, permission.permissionStatus, permission.refreshPermissionStatus, trackingEnabled]);
 
   const stopTracking = useCallback(async () => {
+    trackingGeneration.current += 1;
+    setLocationSaveStatus('IDLE');
     setIsUpdatingTracking(true);
     try {
       await services.location.stopTracking();
@@ -159,6 +197,9 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     if (trackingEnabled) await stopTracking();
     await services.location.deleteLocationHistory();
     setCurrentPosition(null);
+    setLocationSaveStatus('IDLE');
+    setLocationSaveError(null);
+    setLastLocationSavedAt(null);
     setLocationStatus('IDLE');
     setLocationError(null);
   }, [stopTracking, trackingEnabled]);
@@ -176,6 +217,9 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     isGettingPosition,
     isUpdatingTracking,
     locationError,
+    locationSaveStatus,
+    locationSaveError,
+    lastLocationSavedAt,
     requestCurrentPosition,
     toggleTracking,
     stopTracking,
@@ -186,6 +230,9 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     isGettingPosition,
     isUpdatingTracking,
     locationError,
+    locationSaveStatus,
+    locationSaveError,
+    lastLocationSavedAt,
     locationStatus,
     permission.error,
     permission.isChecking,
@@ -200,6 +247,12 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   ]);
 
   return <LocationContext.Provider value={value}>{children}</LocationContext.Provider>;
+}
+
+function isValidLocation(point: LocationPoint): boolean {
+  return Number.isFinite(point.latitude) && point.latitude >= -90 && point.latitude <= 90
+    && Number.isFinite(point.longitude) && point.longitude >= -180 && point.longitude <= 180
+    && Number.isFinite(Date.parse(point.recordedAt));
 }
 
 export function useLocation(): LocationContextValue {
