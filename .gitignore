@@ -1,17 +1,100 @@
+# Environment variables
 .env
 .env.*
 !.env.example
+
+# Python
 __pycache__/
 *.py[cod]
 .venv/
 venv/
+
+# Dependencies
 node_modules/
-dist/
+jspm_packages/
+bower_components/
+web_modules/
+
+# Build output
 build/
-.DS_Store
-Thumbs.db
+dist/
+out/
+.output/
+*.tsbuildinfo
+
+# Framework-generated files
+.next/
+.nuxt/
+.svelte-kit/
+.vuepress/dist/
+**/.vitepress/dist
+**/.vitepress/cache
+.docusaurus/
+
+# Cache
+.cache/
+.parcel-cache/
+.npm/
+.pnpm-store/
+.eslintcache
+.stylelintcache
+.nyc_output/
+.grunt/
+.fusebox/
+
+# Test coverage
+coverage/
+*.lcov
+lib-cov/
+
+# Logs and diagnostic reports
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Package output
+*.tgz
+.yarn-integrity
+
+# Yarn Plug'n'Play / Yarn Berry
+.pnp.*
+.yarn/*
+!.yarn/patches/
+!.yarn/plugins/
+!.yarn/releases/
+!.yarn/sdks/
+!.yarn/versions/
+
+# Tool and service directories
+.serverless/
+.dynamodb/
+.firebase/
+.vscode-test/
+
+# Node build configuration
+.lock-wscript
+.node_repl_history
+.tern-port
+
+# Vite temporary files
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+.vite/
+
+# IDE
 .idea/
 .vscode/
-coverage/
-*.log
 
+# OS-generated files
+.DS_Store
+Thumbs.db
