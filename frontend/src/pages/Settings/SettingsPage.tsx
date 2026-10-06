@@ -88,6 +88,13 @@ export default function SettingsPage() {
             </button>
           </div>
           <p className="settings-card__note">위치 기록은 이 브라우저에서만 작동합니다. 앱이나 탭이 닫히면 추적이 종료되며, 백그라운드 추적은 지원하지 않습니다.</p>
+          <p className="settings-state" role="status" aria-live="polite">
+            서버 저장: <strong>{settings.locationSaveStatus === 'SAVING' ? '저장 중'
+              : settings.locationSaveStatus === 'SUCCESS' ? '최근 저장 성공'
+                : settings.locationSaveStatus === 'ERROR' ? '저장 실패' : '대기 중'}</strong>
+            {settings.lastLocationSavedAt && ` · ${new Date(settings.lastLocationSavedAt).toLocaleTimeString()}`}
+          </p>
+          {settings.locationSaveError && <p className="diary-editor__error" role="alert">{settings.locationSaveError}</p>}
         </div>
 
         <div className="settings-card">
@@ -136,7 +143,7 @@ export default function SettingsPage() {
         <div className="settings-card settings-card--danger">
           <div className="settings-card__copy">
             <h3>위치 기록 삭제</h3>
-            <p>저장된 Timeline과 위치 기록, 현재 위치 상태를 삭제하고 추적을 중지합니다. 작성한 일기는 유지됩니다.</p>
+            <p>이 브라우저의 Timeline과 위치 기록, 현재 위치 상태를 삭제하고 추적을 중지합니다. 서버에 저장된 위치는 삭제되지 않으며, 작성한 일기는 유지됩니다.</p>
           </div>
           <button className="settings-danger-button" onClick={() => settings.requestDelete('location')} type="button">위치 기록 삭제</button>
         </div>
@@ -183,11 +190,11 @@ export default function SettingsPage() {
           <p>이 서비스는 하루의 라이프로그를 만들기 위해 위치 정보와 사용자가 입력한 기억 및 일기 데이터를 활용합니다.</p>
           <h3>위치정보 사용 목적</h3>
           <ul>
-            <li>이동 경로와 체류지를 파악합니다.</li>
+            <li>위치 추적 중 수신한 좌표를 설정된 Backend에 저장합니다.</li>
             <li>시간과 장소를 바탕으로 하루 Timeline을 구성합니다.</li>
             <li>하루의 맥락을 이해하기 위한 행동 후보를 준비합니다.</li>
           </ul>
-          <p>위치는 하루의 흐름을 구성하기 위한 근거로 사용됩니다. 현재 Prototype은 입력 정보를 실제 서버에 저장하지 않으며, 위치 기록과 일기를 각각 또는 전체 삭제할 수 있습니다.</p>
+          <p>위치 기록 삭제는 현재 브라우저 데이터에 적용됩니다. 서버 위치 기록 삭제 기능은 Backend API에 준비되어 있지 않습니다.</p>
         </div>
       </section>
 
