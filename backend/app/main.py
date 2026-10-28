@@ -2,9 +2,8 @@ from app.routers.locations import router as locations_router
 from app.routers.diaries import router as diaries_router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from app.routers.health import router as health_router
-
+from app.routers.stay_points import router as stay_points_router
 
 app = FastAPI(
     title="LifeLog Diary API",
@@ -22,3 +21,4 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(locations_router)
 app.include_router(diaries_router)
+app.include_router(stay_points_router)
