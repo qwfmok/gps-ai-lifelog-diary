@@ -9,7 +9,7 @@ from fastapi import APIRouter, Query
 from app.db.supabase import supabase
 from app.services.geocoding import reverse_geocode
 from app.services.stay_points import detect_stay_points
-
+from app.schemas.stay_point import StayPointResponse
 
 router = APIRouter(
     prefix="/api/stay-points",
@@ -19,7 +19,7 @@ router = APIRouter(
 KST = timezone(timedelta(hours=9))
 logger = logging.getLogger(__name__)
 
-@router.get("")
+@router.get("", response_model=list[StayPointResponse])
 async def get_stay_points(
     target_date: date = Query(..., alias="date"),
 ):
