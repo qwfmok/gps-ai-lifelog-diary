@@ -1,3 +1,6 @@
+import logging
+import httpx
+
 from asyncio import to_thread
 from datetime import date, datetime, time, timedelta, timezone
 
@@ -14,7 +17,7 @@ router = APIRouter(
 )
 
 KST = timezone(timedelta(hours=9))
-
+logger = logging.getLogger(__name__)
 
 @router.get("")
 async def get_stay_points(
@@ -54,9 +57,17 @@ async def get_stay_points(
     stays = detect_stay_points(locations)
 
     for stay in stays:
-        stay["address"] = await reverse_geocode(
-            latitude=stay["latitude"],
-            longitude=stay["longitude"],
-        )
+        stay["address"] = None
+
+        try:
+            stay["address"] = await reverse_geocode(
+                latitude=stay["latitude"],
+                longitude=stay["longitude"],
+            )
+        except httpx.HTTPError as exc:
+            logger.warning(
+                "Stay point address lookup failed: %s",
+                type(exc).__name__,
+            )
 
     return stays
