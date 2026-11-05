@@ -1,10 +1,15 @@
+import logging
+import httpx
+
+from asyncio import to_thread
 from datetime import date, datetime, time, timedelta, timezone
 
 from fastapi import APIRouter, Query
 
 from app.db.supabase import supabase
+from app.services.geocoding import reverse_geocode
 from app.services.stay_points import detect_stay_points
-
+from app.schemas.stay_point import StayPointResponse
 
 router = APIRouter(
     prefix="/api/stay-points",
@@ -12,10 +17,10 @@ router = APIRouter(
 )
 
 KST = timezone(timedelta(hours=9))
+logger = logging.getLogger(__name__)
 
-
-@router.get("")
-def get_stay_points(
+@router.get("", response_model=list[StayPointResponse])
+async def get_stay_points(
     target_date: date = Query(..., alias="date"),
 ):
     start = datetime.combine(target_date, time.min, tzinfo=KST)
@@ -24,13 +29,12 @@ def get_stay_points(
     start_utc = start.astimezone(timezone.utc).isoformat()
     end_utc = end.astimezone(timezone.utc).isoformat()
 
-    # Supabase의 응답 건수 제한에 대비해 나눠서 조회합니다.
     locations = []
     page_size = 500
     offset = 0
 
     while True:
-        result = (
+        query = (
             supabase
             .table("location_logs")
             .select("id,latitude,longitude,recorded_at")
@@ -39,9 +43,9 @@ def get_stay_points(
             .order("recorded_at")
             .order("id")
             .range(offset, offset + page_size - 1)
-            .execute()
         )
 
+        result = await to_thread(query.execute)
         page = result.data
         locations.extend(page)
 
@@ -50,4 +54,20 @@ def get_stay_points(
 
         offset += page_size
 
-    return detect_stay_points(locations)
+    stays = detect_stay_points(locations)
+
+    for stay in stays:
+        stay["address"] = None
+
+        try:
+            stay["address"] = await reverse_geocode(
+                latitude=stay["latitude"],
+                longitude=stay["longitude"],
+            )
+        except httpx.HTTPError as exc:
+            logger.warning(
+                "Stay point address lookup failed: %s",
+                type(exc).__name__,
+            )
+
+    return stays

@@ -30,9 +30,6 @@ async def reverse_geocode(
             params=params,
         )
 
-        print("Kakao status:", response.status_code)
-        print("Kakao response:", response.text)
-
         response.raise_for_status()
 
         data = response.json()
