@@ -2,6 +2,7 @@ export type LocationServiceErrorCode =
   | 'PERMISSION_DENIED'
   | 'POSITION_UNAVAILABLE'
   | 'TIMEOUT'
+  | 'LOCATION_SERVICES_DISABLED'
   | 'UNAVAILABLE'
   | 'UNKNOWN';
 
