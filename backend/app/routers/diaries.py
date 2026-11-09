@@ -1,3 +1,5 @@
+import os
+from openai import OpenAIError
 from asyncio import to_thread
 from datetime import date, datetime, timezone
 from uuid import UUID
@@ -7,7 +9,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.core.auth import require_user_id
 from app.db.supabase import supabase
-
+from app.services.diary_generator import generate_diary_draft
 from app.schemas.diary import (
     DiaryGenerateRequest,
     DiaryGenerateResponse,
@@ -26,7 +28,6 @@ async def generate_diary(
     _user_id: str = Depends(require_user_id),
 ):
     memo = data.memo.strip()
-
     if not 1 <= len(memo) <= 4000:
         raise HTTPException(status_code=422, detail="메모를 1~4000자로 입력하세요.")
 
@@ -36,13 +37,30 @@ async def generate_diary(
             detail="현재는 메모만 지원합니다. location_ids는 빈 배열로 보내세요.",
         )
 
-    # 임시 초안: API 키 없이 생성·저장 흐름을 검증하기 위해 메모를 그대로 반환.
+    mode = os.getenv("DIARY_GENERATION_MODE", "mock")
+    if mode == "mock":
+        draft = memo
+    elif mode == "openai":
+        api_key = os.getenv("OPENAI_API_KEY")
+        model = os.getenv("OPENAI_DIARY_MODEL")
+        if not api_key or not model:
+            raise HTTPException(status_code=503, detail="일기 생성 설정이 필요합니다.")
+
+        try:
+            draft = await generate_diary_draft(memo, api_key=api_key, model=model)
+        except (OpenAIError, ValueError):
+            raise HTTPException(
+                status_code=502,
+                detail="일기 초안을 생성하지 못했습니다.",
+            ) from None
+    else:
+        raise HTTPException(status_code=503, detail="일기 생성 모드 설정이 잘못됐습니다.")
+
     return DiaryGenerateResponse(
-        generated_diary=memo,
+        generated_diary=draft,
         used_facts=[memo],
         uncertain_points=[],
     )
-
 
 class DiaryContent(BaseModel):
     content: str = Field(min_length=1, max_length=20000)
