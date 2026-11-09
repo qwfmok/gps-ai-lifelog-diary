@@ -3,5 +3,6 @@ uvicorn[standard]
 python-dotenv
 supabase
 httpx
-openai
+openai>=2,<3
 python-multipart
+websockets>=15,<17
