@@ -18,24 +18,30 @@ router = APIRouter(
     prefix="/api/diaries",
     tags=["diaries"],
 )
-
-
-@router.post(
-    "/generate",
-    response_model=DiaryGenerateResponse
-)
-async def generate_diary(data: DiaryGenerateRequest):
-    return DiaryGenerateResponse(
-        generated_diary=(
-            "오늘은 친구와 카페에서 프로젝트에 관해 이야기를 나눴다."
-        ),
-        used_facts=[
-            "카페에서 프로젝트 회의를 함"
-        ],
-        uncertain_points=[]
-    )
-
 DIARY_COLUMNS = "id,diary_date,content,created_at,updated_at"
+
+@router.post("/generate", response_model=DiaryGenerateResponse)
+async def generate_diary(
+    data: DiaryGenerateRequest,
+    _user_id: str = Depends(require_user_id),
+):
+    memo = data.memo.strip()
+
+    if not 1 <= len(memo) <= 4000:
+        raise HTTPException(status_code=422, detail="메모를 1~4000자로 입력하세요.")
+
+    if data.location_ids:
+        raise HTTPException(
+            status_code=422,
+            detail="현재는 메모만 지원합니다. location_ids는 빈 배열로 보내세요.",
+        )
+
+    # 임시 초안: API 키 없이 생성·저장 흐름을 검증하기 위해 메모를 그대로 반환.
+    return DiaryGenerateResponse(
+        generated_diary=memo,
+        used_facts=[memo],
+        uncertain_points=[],
+    )
 
 
 class DiaryContent(BaseModel):
