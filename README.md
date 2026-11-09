@@ -75,3 +75,17 @@ docs/       설계, 일정, 평가 계획
 
 현재 저장소는 프로젝트 구조와 개발 계획을 정리한 초기 상태입니다. 첫 구현 목표는 실제 휴대폰에서 위치와 메모를 전송해 일기 한 편을 생성하고 저장하는 흐름입니다.
 
+### 일기 생성 CLI
+
+저장소 루트에서 `python -m pip install -r backend/diary/requirements-diary.txt`로 의존성을 설치합니다. `backend/.env`에 `OPENAI_API_KEY`를 설정하고 [일기 프롬프트](backend/diary/prompt.txt)를 준비합니다.
+
+FastAPI 서버가 실행 중이면 날짜를 지정해 해당 날짜의 체류지로 일기를 생성할 수 있습니다.
+
+```powershell
+python -m backend.diary.diary_cli --date 2026-11-09
+```
+
+CLI는 `GET /api/stay-points`에서 체류지를 조회해 주소(`address`), 한국 시간으로 변환한 시작·종료 시각(`started_at`, `ended_at`), 체류 시간(분, `duration_minutes`)을 시작 시각순으로 전달합니다. 주소를 조회할 수 없는 체류지는 `address`가 `null`입니다. 서버 주소가 다르면 `--backend-url`로 지정할 수 있습니다.
+
+`--date`를 생략하면 장소와 시간을 직접 입력할 수 있습니다. STT 전사문을 붙여넣고 마지막 줄에 `END`를 입력하거나 `--stt-file`로 TXT 파일을 지정합니다. 결과는 기본적으로 `backend/diary/output/`에 저장됩니다.
+

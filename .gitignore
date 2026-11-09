@@ -104,3 +104,6 @@ credentials/
 service-account*.json
 backend/stt/output/
 backend/stt/prompt.txt
+
+# Diary output
+backend/diary/output/
