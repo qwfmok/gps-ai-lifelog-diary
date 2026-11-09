@@ -1,5 +1,5 @@
 from asyncio import to_thread
-from datetime import date, datetime
+from datetime import date, datetime, time, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -77,3 +77,27 @@ async def create_timeline_note(
     query = supabase.table("timeline_notes").insert(data)
     result = await to_thread(query.execute)
     return result.data[0]
+
+@router.get("/notes", response_model=list[TimelineNoteResponse])
+async def get_timeline_notes(
+    target_date: date = Query(..., alias="date"),
+    user_id: str = Depends(require_user_id),
+):
+    kst = timezone(timedelta(hours=9))
+    start = datetime.combine(target_date, time.min, tzinfo=kst)
+    end = start + timedelta(days=1)
+
+    query = (
+        supabase
+        .table("timeline_notes")
+        .select("id,anchor_location_id,stay_started_at,stay_ended_at,note,created_at")
+        .eq("user_id", user_id)
+        .gte("stay_started_at", start.astimezone(timezone.utc).isoformat())
+        .lt("stay_started_at", end.astimezone(timezone.utc).isoformat())
+        .order("stay_started_at")
+        .order("created_at")
+        .order("id")
+    )
+
+    result = await to_thread(query.execute)
+    return result.data
