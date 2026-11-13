@@ -78,11 +78,7 @@ async def create_timeline_note(
     result = await to_thread(query.execute)
     return result.data[0]
 
-@router.get("/notes", response_model=list[TimelineNoteResponse])
-async def get_timeline_notes(
-    target_date: date = Query(..., alias="date"),
-    user_id: str = Depends(require_user_id),
-):
+async def load_timeline_notes(target_date: date, user_id: str):
     kst = timezone(timedelta(hours=9))
     start = datetime.combine(target_date, time.min, tzinfo=kst)
     end = start + timedelta(days=1)
@@ -101,3 +97,10 @@ async def get_timeline_notes(
 
     result = await to_thread(query.execute)
     return result.data
+
+@router.get("/notes", response_model=list[TimelineNoteResponse])
+async def get_timeline_notes(
+    target_date: date = Query(..., alias="date"),
+    user_id: str = Depends(require_user_id),
+):
+    return await load_timeline_notes(target_date, user_id)
