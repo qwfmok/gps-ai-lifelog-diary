@@ -3,4 +3,5 @@ uvicorn[standard]
 python-dotenv
 supabase
 httpx
-openai>=2,<3
+openai
+python-multipart
