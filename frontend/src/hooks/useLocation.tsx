@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { services } from '../services';
 import type { LocationPoint } from '../types';
 import { LocationServiceError } from '../services/location/LocationServiceError';
-import { LocationApiError } from '../services/location/LocationApiService';
+import { locationApiErrorMessage } from '../utils/locationApiErrorMessage';
 import { useLocationPermission } from './useLocationPermission';
 
 export type CurrentLocationStatus = 'IDLE' | 'LOADING' | 'SUCCESS' | 'ERROR' | 'UNAVAILABLE';
@@ -38,6 +38,7 @@ function presentLocationError(error: unknown): { message: string; unavailable: b
     if (error.code === 'POSITION_UNAVAILABLE') return { message: '현재 위치를 확인할 수 없습니다.', unavailable: false };
     if (error.code === 'TIMEOUT') return { message: '위치 확인 시간이 초과되었습니다.', unavailable: false };
     if (error.code === 'UNAVAILABLE') return { message: '현재 환경에서는 위치 기능을 사용할 수 없습니다.', unavailable: true };
+    if (error.code === 'LOCATION_SERVICES_DISABLED') return { message: '기기 위치 서비스를 켠 뒤 다시 시도해 주세요.', unavailable: true };
   }
   return { message: '현재 위치를 확인하지 못했습니다. 다시 시도해 주세요.', unavailable: false };
 }
@@ -144,13 +145,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
             }).catch((error: unknown) => {
               if (generation !== trackingGeneration.current) return;
               setLocationSaveStatus('ERROR');
-              setLocationSaveError(error instanceof LocationApiError && error.kind === 'VALIDATION'
-                ? '서버가 위치 정보 형식을 확인해 달라고 응답했습니다.'
-                : error instanceof LocationApiError && error.kind === 'SERVER'
-                  ? '서버에서 위치를 저장하지 못했습니다.'
-                  : error instanceof LocationApiError && error.kind === 'PROTOCOL'
-                    ? '서버 응답을 확인하지 못했습니다.'
-                    : '네트워크 문제로 위치를 저장하지 못했습니다. 위치 추적은 계속됩니다.');
+              setLocationSaveError(`${locationApiErrorMessage(error)} 위치 추적은 계속됩니다.`);
             });
           },
           (error) => {
@@ -162,7 +157,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
           },
         );
         setTrackingEnabled(await services.location.getTrackingStatus());
-        setLocationStatus(currentPosition ? 'SUCCESS' : 'IDLE');
+        setLocationStatus((status) => status === 'SUCCESS' || currentPosition ? 'SUCCESS' : 'IDLE');
       }
     } catch (error) {
       const result = presentLocationError(error);
