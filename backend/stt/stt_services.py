@@ -41,12 +41,14 @@ async def transcribe_connection(ws, queue, language, on_transcript, *, model=STT
             "turn_detection": None,
         }}},
     }))
-    async with asyncio.timeout(15):
+    async def wait_for_session():
         while True:
             event = json.loads(await ws.recv())
             check_error(event)
             if event.get("type") == "session.updated":
-                break
+                return
+
+    await asyncio.wait_for(wait_for_session(), timeout=15)
 
     order, finals, deltas = [], {}, {}
     changed = asyncio.Event()
