@@ -11,6 +11,18 @@
 
 ## 동작과 제한
 
+### FastAPI 음성 업로드
+
+`POST /api/voice/transcribe`는 사용자 Bearer 토큰과 multipart `audio` 필드를 받습니다.
+
+- `VOICE_TRANSCRIPTION_MODE=disabled`(기본값): 전사 비활성화.
+- `VOICE_TRANSCRIPTION_MODE=mock`: 외부 호출 없이 테스트 전사문 반환.
+- `VOICE_TRANSCRIPTION_MODE=openai`: 서버의 `OPENAI_API_KEY`로 기존 실시간 전사 서비스를 호출합니다. 현재는 24 kHz 모노 PCM16 WAV만 지원하며, 업로드는 10 MiB 이하입니다. M4A·WebM 변환 및 GPT 교정은 수행하지 않습니다.
+
+실제 모드는 최종 전사문을 `{"transcript": "...", "mode": "openai"}`로 반환합니다. 음성을 OpenAI로 전송하지만 앱 데이터베이스에는 저장하지 않습니다.
+
+### 독립 CLI
+
 - 기존과 같이 CLI 녹음은 한 번에 최대 **4분**입니다. 이는 프로그램의 설정값입니다.
 - 오디오는 100 ms 단위로 전송하고, 약 15초마다 전사 구간을 확정합니다. 임시 텍스트는 그 사이에도 출력됩니다.
 - 최종 전사 이벤트가 역순으로 도착해도 오디오 구간 순서로 합칩니다.
