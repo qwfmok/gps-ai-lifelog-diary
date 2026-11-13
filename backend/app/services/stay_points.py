@@ -61,6 +61,7 @@ def detect_stay_points(
             return
 
         stays.append({
+            "anchor_location_id": group[0].get("id"),
             "latitude": sum(p["latitude"] for p in group) / len(group),
             "longitude": sum(p["longitude"] for p in group) / len(group),
             "started_at": start.isoformat(),
