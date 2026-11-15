@@ -37,12 +37,22 @@ def read_timeline() -> Timeline:
     return sorted(timeline, key=lambda visit: str(visit["time"]))
 
 
-def fetch_timeline(base_url: str, day: date) -> Timeline:
+def fetch_timeline(base_url: str, day: date, *, access_token: str) -> Timeline:
     url = f"{base_url.rstrip('/')}/api/stay-points"
     try:
-        response = httpx.get(url, params={"date": day.isoformat()}, timeout=30)
+        response = httpx.get(
+            url,
+            params={"date": day.isoformat()},
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=30,
+        )
         response.raise_for_status()
     except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 401:
+            raise RuntimeError(
+                "체류지 조회 인증에 실패했습니다 (HTTP 401). "
+                "다시 로그인한 뒤 SUPABASE_ACCESS_TOKEN을 갱신해 주세요."
+            ) from exc
         raise RuntimeError(f"백엔드 체류지 조회에 실패했습니다 (HTTP {exc.response.status_code}).") from exc
     except (httpx.RequestError, httpx.InvalidURL) as exc:
         raise RuntimeError("백엔드 체류지 API에 연결할 수 없습니다. 서버 상태와 --backend-url을 확인해 주세요.") from exc
@@ -105,7 +115,10 @@ def main() -> int:
     load_dotenv(DIARY_DIR.parent / ".env")
     load_dotenv(DIARY_DIR.parent.parent / ".env")
     parser = argparse.ArgumentParser(description="장소·시간 기록과 STT 전사문으로 일기를 생성합니다.")
-    parser.add_argument("--date", type=date.fromisoformat, metavar="YYYY-MM-DD", help="백엔드에서 체류지를 조회할 날짜")
+    parser.add_argument(
+        "--date", type=date.fromisoformat, metavar="YYYY-MM-DD",
+        help="백엔드에서 체류지를 조회할 날짜 (SUPABASE_ACCESS_TOKEN 필요)",
+    )
     parser.add_argument("--backend-url", default="http://localhost:8000", help="백엔드 주소 (기본값 http://localhost:8000)")
     parser.add_argument(
         "--prompt-file", type=Path, default=DIARY_DIR / "prompt.txt", help="일기 작성 프롬프트 TXT 파일",
@@ -124,8 +137,14 @@ def main() -> int:
             raise ValueError("backend/.env 또는 환경 변수에 OPENAI_API_KEY를 설정해 주세요.")
 
         if args.date is not None:
+            access_token = (os.getenv("SUPABASE_ACCESS_TOKEN") or "").strip()
+            if not access_token:
+                raise ValueError(
+                    "--date를 사용하려면 backend/.env 또는 환경 변수에 "
+                    "SUPABASE_ACCESS_TOKEN을 설정해 주세요."
+                )
             print(f"{args.date} 체류지를 백엔드에서 조회하고 있습니다…", flush=True)
-            timeline = fetch_timeline(args.backend_url, args.date)
+            timeline = fetch_timeline(args.backend_url, args.date, access_token=access_token)
         else:
             timeline = read_timeline()
         transcript = read_transcript(args.stt_file)
