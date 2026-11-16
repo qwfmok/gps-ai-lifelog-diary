@@ -1,6 +1,7 @@
 import type {
   ActivityService,
   DiaryService,
+  DiaryGenerationService,
   LocationService,
   TimelineService,
   VoiceService,
@@ -8,6 +9,8 @@ import type {
 import { Capacitor } from '@capacitor/core';
 import { MockActivityService } from './activity/MockActivityService';
 import { MockDiaryService } from './diary/MockDiaryService';
+import { MockDiaryGenerationService } from './diary/MockDiaryGenerationService';
+import { DiaryGenerationApiService } from './diary/DiaryGenerationApiService';
 import { MockTimelineService } from './timeline/MockTimelineService';
 import { MockTimelineDataService } from './timeline/MockTimelineDataService';
 import { TimelineApiService } from './timeline/TimelineApiService';
@@ -21,6 +24,7 @@ import { LocationApiService } from './location/LocationApiService';
 export interface ApplicationServices {
   activity: ActivityService;
   diary: DiaryService;
+  diaryGeneration: DiaryGenerationService;
   location: LocationService;
   locationApi: LocationApiService;
   timeline: TimelineService;
@@ -35,13 +39,18 @@ const timelineData = timelineDataSource === 'mock'
   : new TimelineApiService();
 const voiceSource = import.meta.env.VITE_STT_SOURCE ?? 'mock';
 const voiceService = voiceSource === 'mock' ? new MockVoiceService() : new ApiVoiceService();
+export const diaryGenerationSource = import.meta.env.VITE_DIARY_SOURCE ?? 'mock';
+const diaryService = new MockDiaryService(timelineService);
 const locationService = Capacitor.getPlatform() === 'android'
   ? new CapacitorLocationService(timelineService)
   : new WebLocationService(timelineService);
 
 export const services: ApplicationServices = {
   activity: new MockActivityService(timelineService),
-  diary: new MockDiaryService(timelineService),
+  diary: diaryService,
+  diaryGeneration: diaryGenerationSource === 'api'
+    ? new DiaryGenerationApiService()
+    : new MockDiaryGenerationService(diaryService),
   location: locationService,
   locationApi: new LocationApiService(),
   timeline: timelineService,

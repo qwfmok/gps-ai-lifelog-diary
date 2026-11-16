@@ -17,6 +17,8 @@ Timeline data uses Mock mode by default. Set `VITE_TIMELINE_SOURCE=api` to use t
 
 Voice recording and transcription use Mock mode by default. Set `VITE_STT_SOURCE=api` to capture mono audio, encode it as 24 kHz PCM16 WAV, and upload it as the `audio` multipart field to the authenticated `/api/voice/transcribe` endpoint. The actual STT path also requires the Backend to be configured with `VOICE_TRANSCRIPTION_MODE=openai`; a Mock-mode response is reported as unavailable instead of being shown as a real transcript. Android microphone access uses the WebView permission flow and the app manifest audio permissions.
 
+Diary generation uses Mock mode by default. Set `VITE_DIARY_SOURCE=api` to send the Korean calendar date, optional memo, and optional edited STT transcript to authenticated `POST /api/diaries/generate`. The Backend loads that user's date-specific stay and Timeline Notes. The returned draft and edits remain in frontend memory; Diary CRUD and History persistence are not part of this integration. Configure the Backend's `DIARY_GENERATION_MODE=openai` to use OpenAI. The current response schema does not include a generation mode, so the client cannot independently distinguish a Backend Mock draft from an OpenAI draft.
+
 ## Supabase Auth
 
 Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in the frontend environment to enable Supabase Auth. A legacy public `VITE_SUPABASE_ANON_KEY` is also accepted. These are public client credentials; never put a Supabase secret or service-role key in a `VITE_` variable.

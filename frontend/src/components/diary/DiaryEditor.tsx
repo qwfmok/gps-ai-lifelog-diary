@@ -7,6 +7,7 @@ interface DiaryEditorProps {
   isSaving: boolean;
   saveError: string | null;
   validationError: string | null;
+  isDraftOnly?: boolean;
   onChange: (content: string) => void;
   onCancel: () => void;
   onSave: () => void;
@@ -18,6 +19,7 @@ export default function DiaryEditor({
   isSaving,
   saveError,
   validationError,
+  isDraftOnly = false,
   onChange,
   onCancel,
   onSave,
@@ -31,6 +33,7 @@ export default function DiaryEditor({
         <h3 id="diary-editor-title">오늘의 일기 수정</h3>
         <p>원하는 표현으로 편하게 다듬어 주세요.</p>
       </div>
+      {isDraftOnly && <p role="status">생성된 초안입니다. 수정 내용은 이 화면에만 반영되며 서버에 저장되지 않습니다.</p>}
       <div className="diary-editor__field">
         <label htmlFor="diary-content">일기 내용</label>
         <textarea
@@ -48,7 +51,7 @@ export default function DiaryEditor({
           취소
         </button>
         <button className="diary-generator__primary" disabled={isSaving} onClick={onSave} type="button">
-          {isSaving ? '저장 중...' : '저장'}
+          {isDraftOnly ? '수정 내용 반영' : isSaving ? '저장 중...' : '저장'}
         </button>
       </div>
     </section>
