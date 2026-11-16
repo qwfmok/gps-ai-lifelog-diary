@@ -13,6 +13,10 @@ export function locationApiErrorMessage(error: unknown): string {
       return '모바일에서 접근 가능한 API 서버 주소가 필요합니다.';
     case 'INSECURE_TRANSPORT':
       return 'Android 앱의 위치 API 연결에는 HTTPS 서버 주소가 필요합니다.';
+    case 'AUTH_CONFIGURATION':
+      return 'Supabase URL과 공개 Auth Key를 설정해 주세요.';
+    case 'AUTHENTICATION':
+      return '로그인이 필요하거나 세션이 만료되었습니다.';
     case 'NETWORK':
       return Capacitor.getPlatform() === 'android'
         ? '모바일에서 API 서버에 연결할 수 없습니다. 서버 주소와 기기 네트워크를 확인해 주세요.'
