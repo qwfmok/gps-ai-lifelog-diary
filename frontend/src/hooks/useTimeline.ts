@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { Activity, TimelineEvent } from '../types';
+import type { Activity, TimelineEvent, TimelineLoadStatus } from '../types';
 import { services } from '../services';
-
-type TimelineLoadStatus = 'loading' | 'success' | 'empty' | 'error';
+import { TimelineApiError } from '../services/timeline/TimelineApiService';
 
 interface TimelineState {
   status: TimelineLoadStatus;
@@ -44,7 +43,7 @@ export function useTimeline(date: string): UseTimelineResult {
   }, []);
 
   const addNote = useCallback(async (eventId: string, note: string) => {
-    const updatedEvent = await services.timeline.addNote(eventId, note);
+    const updatedEvent = await services.timelineData.addNote(date, eventId, note);
 
     setState((currentState) => ({
       ...currentState,
@@ -56,15 +55,15 @@ export function useTimeline(date: string): UseTimelineResult {
     }));
 
     return updatedEvent;
-  }, []);
+  }, [date]);
 
   useEffect(() => {
     let isCurrentRequest = true;
 
     setState({ status: 'loading', events: [], error: null });
 
-    services.timeline
-      .getTimeline(date)
+    services.timelineData
+      .getTimelineByDate(date)
       .then((events) => {
         if (!isCurrentRequest) return;
 
@@ -74,13 +73,14 @@ export function useTimeline(date: string): UseTimelineResult {
           error: null,
         });
       })
-      .catch(() => {
+      .catch((loadError: unknown) => {
         if (!isCurrentRequest) return;
 
+        const failure = getTimelineFailure(loadError);
         setState({
-          status: 'error',
+          status: failure.status,
           events: [],
-          error: '오늘의 기록을 불러오지 못했습니다.',
+          error: failure.message,
         });
       });
 
@@ -90,4 +90,17 @@ export function useTimeline(date: string): UseTimelineResult {
   }, [attempt, date]);
 
   return { ...state, retry, confirmActivity, addNote };
+}
+
+function getTimelineFailure(error: unknown): { status: Exclude<TimelineLoadStatus, 'loading' | 'success' | 'empty'>; message: string } {
+  if (!(error instanceof TimelineApiError)) {
+    return { status: 'error', message: '오늘의 기록을 불러오지 못했습니다. 다시 시도해 주세요.' };
+  }
+
+  if (error.kind === 'AUTH_REQUIRED') return { status: 'auth-required', message: error.message };
+  if (error.kind === 'AUTH_CONFIGURATION' || error.kind === 'BACKEND_CONFIGURATION'
+    || error.kind === 'INSECURE_TRANSPORT') {
+    return { status: 'configuration-error', message: error.message };
+  }
+  return { status: 'error', message: error.message };
 }

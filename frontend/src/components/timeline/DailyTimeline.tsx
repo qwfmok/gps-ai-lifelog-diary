@@ -1,11 +1,9 @@
-import type { TimelineEvent } from '../../types';
+import type { TimelineEvent, TimelineLoadStatus } from '../../types';
 import TimelineItem from './TimelineItem';
-
-type TimelineViewStatus = 'loading' | 'success' | 'empty' | 'error';
 
 interface DailyTimelineProps {
   events: TimelineEvent[];
-  status: TimelineViewStatus;
+  status: TimelineLoadStatus;
   error: string | null;
   onRetry: () => void;
   onConfirmActivity: (event: TimelineEvent) => void;
@@ -29,7 +27,7 @@ export default function DailyTimeline({
     );
   }
 
-  if (status === 'error') {
+  if (status === 'error' || status === 'auth-required' || status === 'configuration-error') {
     return (
       <div className="timeline-state timeline-state--error" role="alert">
         <p>{error ?? '오늘의 기록을 불러오지 못했습니다.'}</p>

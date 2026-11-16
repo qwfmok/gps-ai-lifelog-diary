@@ -9,6 +9,7 @@ const statusLabels: Record<TimelineEventStatus, string> = {
   INFERRED: '자동 추론',
   UNCERTAIN: '확인 필요',
   EMPTY: '기록 없음',
+  LOCATION: '위치 기록',
 };
 
 export default function TimelineStatusBadge({ status }: TimelineStatusBadgeProps) {
