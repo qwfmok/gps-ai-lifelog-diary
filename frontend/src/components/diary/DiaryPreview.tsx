@@ -35,9 +35,7 @@ export default function DiaryPreview({
       {saveNotice && <p className="diary-preview__notice" role="status">{saveNotice}</p>}
       <div className="diary-preview__actions">
         <button className="diary-preview__edit" onClick={onEdit} type="button">수정</button>
-        <button className="diary-preview__regenerate" onClick={onRegenerate} type="button">
-          다시 생성
-        </button>
+        <button className="diary-preview__regenerate" onClick={onRegenerate} type="button">다시 생성</button>
         {!isDraftOnly && <button className="diary-preview__delete" onClick={onDelete} type="button">삭제</button>}
       </div>
     </article>

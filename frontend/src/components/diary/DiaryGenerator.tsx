@@ -48,12 +48,12 @@ export default function DiaryGenerator({
       setShowReviewPrompt(true);
       return;
     }
-    void generate(memo, transcript);
+    void generate(memo, transcript, isApiSource && editor.isSaved);
   };
 
   const generateAnyway = () => {
     setShowReviewPrompt(false);
-    void generate(memo, transcript);
+    void generate(memo, transcript, isApiSource && editor.isSaved);
   };
 
   return (
@@ -165,7 +165,7 @@ export default function DiaryGenerator({
           <button
             className="diary-generator__primary"
             disabled={!canGenerate}
-            onClick={() => void generate(memo, transcript)}
+            onClick={() => void generate(memo, transcript, isApiSource && editor.isSaved)}
             type="button"
           >
             다시 시도
@@ -180,24 +180,16 @@ export default function DiaryGenerator({
           isSaving={editor.isSaving}
           saveError={editor.saveError}
           validationError={editor.validationError}
-          isDraftOnly={isApiSource}
           onChange={editor.updateDraft}
           onCancel={editor.cancelEditing}
-          onSave={() => {
-            if (!isApiSource) {
-              void editor.save();
-              return;
-            }
-            if (diary) replaceDiary({ ...diary, content: editor.draftContent, updatedAt: new Date().toISOString() });
-            editor.cancelEditing();
-          }}
+          onSave={() => void editor.save()}
         />
       )}
 
       {diary && !editor.isEditing && (status === 'GENERATED' || status === 'ERROR') && (
         <DiaryPreview
           diary={diary}
-          isDraftOnly={isApiSource}
+          isDraftOnly={isApiSource && !editor.isSaved}
           isSaved={editor.isSaved}
           saveNotice={editor.saveNotice}
           onEdit={editor.startEditing}

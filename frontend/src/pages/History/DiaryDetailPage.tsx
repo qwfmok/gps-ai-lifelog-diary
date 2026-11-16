@@ -35,10 +35,10 @@ function DiaryTimelineSummary({ events, loading }: {
 export default function DiaryDetailPage() {
   const { diaryId } = useParams();
   const navigate = useNavigate();
-  const { diary, setDiary, timeline, timelineLoading, status, retry } = useDiaryDetail(diaryId);
+  const { diary, setDiary, timeline, timelineLoading, status, error, retry } = useDiaryDetail(diaryId);
   const onDiarySaved = useCallback((savedDiary: NonNullable<typeof diary>) => setDiary(savedDiary), [setDiary]);
   const onDiaryDeleted = useCallback(() => navigate('/history', { replace: true }), [navigate]);
-  const editor = useDiaryEditor(diary, onDiarySaved, onDiaryDeleted);
+  const editor = useDiaryEditor(diary, onDiarySaved, onDiaryDeleted, true);
 
   if (status === 'loading') {
     return <section className="diary-detail-state" role="status" aria-live="polite"><span className="timeline-state__spinner" aria-hidden="true" /><p>일기를 불러오는 중입니다.</p></section>;
@@ -55,11 +55,14 @@ export default function DiaryDetailPage() {
     );
   }
 
-  if (status === 'error' || !diary) {
+  if (status === 'error' || status === 'auth-required' || status === 'configuration-error' || !diary) {
     return (
       <section className="diary-detail-state" aria-labelledby="diary-load-error-title">
         <p className="page-eyebrow">HISTORY</p>
-        <h1 id="diary-load-error-title">일기를 불러오지 못했습니다.</h1>
+        <h1 id="diary-load-error-title">
+          {status === 'auth-required' ? '로그인이 필요합니다.' : status === 'configuration-error' ? '서비스 설정을 확인해 주세요.' : '일기를 불러오지 못했습니다.'}
+        </h1>
+        {error && <p role="alert">{error}</p>}
         <div className="diary-detail__actions">
           <button className="diary-detail__back" onClick={retry} type="button">다시 시도</button>
           <Link className="diary-detail__back diary-detail__back--quiet" to="/history">지난 기록으로 돌아가기</Link>

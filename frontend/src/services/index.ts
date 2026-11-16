@@ -9,6 +9,7 @@ import type {
 import { Capacitor } from '@capacitor/core';
 import { MockActivityService } from './activity/MockActivityService';
 import { MockDiaryService } from './diary/MockDiaryService';
+import { DiaryApiService } from './diary/DiaryApiService';
 import { MockDiaryGenerationService } from './diary/MockDiaryGenerationService';
 import { DiaryGenerationApiService } from './diary/DiaryGenerationApiService';
 import { MockTimelineService } from './timeline/MockTimelineService';
@@ -41,13 +42,14 @@ const voiceSource = import.meta.env.VITE_STT_SOURCE ?? 'mock';
 const voiceService = voiceSource === 'mock' ? new MockVoiceService() : new ApiVoiceService();
 export const diaryGenerationSource = import.meta.env.VITE_DIARY_SOURCE ?? 'mock';
 const diaryService = new MockDiaryService(timelineService);
+const diaryDataService = diaryGenerationSource === 'api' ? new DiaryApiService() : diaryService;
 const locationService = Capacitor.getPlatform() === 'android'
   ? new CapacitorLocationService(timelineService)
   : new WebLocationService(timelineService);
 
 export const services: ApplicationServices = {
   activity: new MockActivityService(timelineService),
-  diary: diaryService,
+  diary: diaryDataService,
   diaryGeneration: diaryGenerationSource === 'api'
     ? new DiaryGenerationApiService()
     : new MockDiaryGenerationService(diaryService),

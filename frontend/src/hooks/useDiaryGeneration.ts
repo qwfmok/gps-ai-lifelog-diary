@@ -12,7 +12,7 @@ interface DiaryGenerationState {
 }
 
 interface UseDiaryGenerationResult extends DiaryGenerationState {
-  generate: (memo?: string, transcript?: string) => Promise<void>;
+  generate: (memo?: string, transcript?: string, preserveDiaryIdentity?: boolean) => Promise<void>;
   retry: () => Promise<void>;
   replaceDiary: (diary: Diary) => void;
   reset: () => void;
@@ -30,7 +30,11 @@ export function useDiaryGeneration(date: string): UseDiaryGenerationResult {
   const currentDateRef = useRef(date);
   const lastInputRef = useRef({ memo: '', transcript: '' });
 
-  const generate = useCallback(async (memo = lastInputRef.current.memo, transcript = lastInputRef.current.transcript) => {
+  const generate = useCallback(async (
+    memo = lastInputRef.current.memo,
+    transcript = lastInputRef.current.transcript,
+    preserveDiaryIdentity = false,
+  ) => {
     if (statusRef.current === 'GENERATING') return;
     lastInputRef.current = { memo, transcript };
 
@@ -43,7 +47,23 @@ export function useDiaryGeneration(date: string): UseDiaryGenerationResult {
       if (requestId !== requestIdRef.current) return;
 
       statusRef.current = 'GENERATED';
-      setState({ status: 'GENERATED', diary: result.diary, result, error: null });
+      setState((currentState) => {
+        const diary = preserveDiaryIdentity && currentState.diary
+          ? {
+              ...result.diary,
+              id: currentState.diary.id,
+              date: currentState.diary.date,
+              createdAt: currentState.diary.createdAt,
+              updatedAt: currentState.diary.updatedAt,
+            }
+          : result.diary;
+        return {
+          status: 'GENERATED',
+          diary,
+          result: { ...result, diary },
+          error: null,
+        };
+      });
     } catch (generationError) {
       if (requestId !== requestIdRef.current) return;
 
@@ -62,7 +82,13 @@ export function useDiaryGeneration(date: string): UseDiaryGenerationResult {
 
   const replaceDiary = useCallback((diary: Diary) => {
     statusRef.current = 'GENERATED';
-    setState((currentState) => ({ ...currentState, status: 'GENERATED', diary, error: null }));
+    setState((currentState) => ({
+      ...currentState,
+      status: 'GENERATED',
+      diary,
+      result: currentState.result ? { ...currentState.result, diary } : null,
+      error: null,
+    }));
   }, []);
 
   const reset = useCallback(() => {
