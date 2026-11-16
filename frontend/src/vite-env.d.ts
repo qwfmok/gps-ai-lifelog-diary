@@ -7,4 +7,5 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_PUBLISHABLE_KEY?: string;
   readonly VITE_SUPABASE_ANON_KEY?: string;
   readonly VITE_TIMELINE_SOURCE?: 'mock' | 'api';
+  readonly VITE_STT_SOURCE?: 'mock' | 'api';
 }

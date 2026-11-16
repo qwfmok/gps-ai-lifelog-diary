@@ -13,6 +13,7 @@ import { MockTimelineDataService } from './timeline/MockTimelineDataService';
 import { TimelineApiService } from './timeline/TimelineApiService';
 import type { TimelineDataService } from './timeline/TimelineDataService';
 import { MockVoiceService } from './voice/MockVoiceService';
+import { ApiVoiceService } from './voice/ApiVoiceService';
 import { WebLocationService } from './location/WebLocationService';
 import { CapacitorLocationService } from './location/CapacitorLocationService';
 import { LocationApiService } from './location/LocationApiService';
@@ -32,6 +33,8 @@ const timelineDataSource = import.meta.env.VITE_TIMELINE_SOURCE ?? 'mock';
 const timelineData = timelineDataSource === 'mock'
   ? new MockTimelineDataService(timelineService)
   : new TimelineApiService();
+const voiceSource = import.meta.env.VITE_STT_SOURCE ?? 'mock';
+const voiceService = voiceSource === 'mock' ? new MockVoiceService() : new ApiVoiceService();
 const locationService = Capacitor.getPlatform() === 'android'
   ? new CapacitorLocationService(timelineService)
   : new WebLocationService(timelineService);
@@ -43,5 +46,5 @@ export const services: ApplicationServices = {
   locationApi: new LocationApiService(),
   timeline: timelineService,
   timelineData,
-  voice: new MockVoiceService(),
+  voice: voiceService,
 };

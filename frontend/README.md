@@ -15,6 +15,8 @@ The existing web development workflow remains `npm run dev`. Set `VITE_API_BASE_
 
 Timeline data uses Mock mode by default. Set `VITE_TIMELINE_SOURCE=api` to use the authenticated `GET /api/timeline?date=YYYY-MM-DD` endpoint. API mode also loads and saves Timeline Notes through `/api/timeline/notes`. Configuration, authentication, and API errors are shown in Today; a failed API request never silently falls back to Mock data.
 
+Voice recording and transcription use Mock mode by default. Set `VITE_STT_SOURCE=api` to capture mono audio, encode it as 24 kHz PCM16 WAV, and upload it as the `audio` multipart field to the authenticated `/api/voice/transcribe` endpoint. The actual STT path also requires the Backend to be configured with `VOICE_TRANSCRIPTION_MODE=openai`; a Mock-mode response is reported as unavailable instead of being shown as a real transcript. Android microphone access uses the WebView permission flow and the app manifest audio permissions.
+
 ## Supabase Auth
 
 Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in the frontend environment to enable Supabase Auth. A legacy public `VITE_SUPABASE_ANON_KEY` is also accepted. These are public client credentials; never put a Supabase secret or service-role key in a `VITE_` variable.
