@@ -5,5 +5,5 @@ export type {
   LocationPoint,
   Place,
 } from './location';
-export type { TimelineEvent, TimelineEventStatus } from './timeline';
+export type { TimelineEvent, TimelineEventStatus, TimelineLoadStatus } from './timeline';
 export type { VoiceRecord, VoiceRecordStatus } from './voice';

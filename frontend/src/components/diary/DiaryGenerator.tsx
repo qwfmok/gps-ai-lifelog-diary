@@ -1,17 +1,15 @@
 import { useState } from 'react';
-import type { TimelineEvent } from '../../types';
+import type { TimelineEvent, TimelineLoadStatus } from '../../types';
 import { useDiaryGeneration } from '../../hooks/useDiaryGeneration';
 import { useDiaryEditor } from '../../hooks/useDiaryEditor';
 import DiaryPreview from './DiaryPreview';
 import DiaryEditor from './DiaryEditor';
 import DiaryDeleteDialog from './DiaryDeleteDialog';
 
-type TimelineStatus = 'loading' | 'success' | 'empty' | 'error';
-
 interface DiaryGeneratorProps {
   date: string;
   events: TimelineEvent[];
-  timelineStatus: TimelineStatus;
+  timelineStatus: TimelineLoadStatus;
   onReviewPending: (eventId: string) => void;
 }
 
@@ -64,7 +62,7 @@ export default function DiaryGenerator({
           오늘의 기록을 불러온 뒤 일기를 만들 수 있습니다.
         </p>
       )}
-      {timelineStatus === 'error' && (
+      {(timelineStatus === 'error' || timelineStatus === 'auth-required' || timelineStatus === 'configuration-error') && (
         <p className="diary-generator__availability" role="status">
           오늘의 기록을 불러오면 일기를 만들 수 있습니다.
         </p>
