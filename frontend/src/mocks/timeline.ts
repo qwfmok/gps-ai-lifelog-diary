@@ -1,7 +1,7 @@
 import type { TimelineEvent } from '../types';
-import { getLocalDateString } from '../utils/date';
+import { getKoreanDateString } from '../utils/date';
 
-const MOCK_TIMELINE_DATE = getLocalDateString();
+const MOCK_TIMELINE_DATE = getKoreanDateString();
 
 export const MOCK_TIMELINE_EVENTS: readonly TimelineEvent[] = [
   {

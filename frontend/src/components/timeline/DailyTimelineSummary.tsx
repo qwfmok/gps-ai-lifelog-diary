@@ -10,13 +10,15 @@ export default function DailyTimelineSummary({ events }: DailyTimelineSummaryPro
   const needsConfirmationCount = events.filter(
     (event) => event.status === 'UNCERTAIN' || event.status === 'EMPTY',
   ).length;
+  const locationCount = events.filter((event) => event.status === 'LOCATION').length;
 
-  const summaryItems = [
+  const summaryItems: { label: string; count: number; tone: string }[] = [
     { label: '오늘 기록', count: events.length, tone: 'total' },
     { label: '확인됨', count: confirmedCount, tone: 'confirmed' },
     { label: '자동 추론', count: inferredCount, tone: 'inferred' },
     { label: '확인 필요', count: needsConfirmationCount, tone: 'uncertain' },
   ];
+  if (locationCount > 0) summaryItems.push({ label: '위치 기록', count: locationCount, tone: 'locations' });
 
   return (
     <dl className="daily-summary" aria-label="오늘의 기록 요약">

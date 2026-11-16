@@ -425,7 +425,7 @@ a {
 
 @media (min-width: 560px) {
   .daily-summary {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   }
 }
 
@@ -536,6 +536,15 @@ a {
 
 .timeline-item--empty .timeline-card {
   border-style: dashed;
+}
+
+.timeline-location-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin: 8px 0 0;
+  color: #758078;
+  font-size: 0.76rem;
 }
 
 .timeline-card__topline {
