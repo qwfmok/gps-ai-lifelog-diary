@@ -425,7 +425,7 @@ a {
 
 @media (min-width: 560px) {
   .daily-summary {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   }
 }
 
@@ -536,6 +536,15 @@ a {
 
 .timeline-item--empty .timeline-card {
   border-style: dashed;
+}
+
+.timeline-location-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin: 8px 0 0;
+  color: #758078;
+  font-size: 0.76rem;
 }
 
 .timeline-card__topline {
@@ -1117,6 +1126,35 @@ a {
 
 .diary-generator__hint {
   margin: 0;
+}
+
+.diary-generator__inputs {
+  display: grid;
+  gap: 0.55rem;
+  margin: 1rem 0;
+}
+
+.diary-generator__inputs label {
+  color: var(--color-text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.diary-generator__inputs textarea {
+  width: 100%;
+  min-height: 5rem;
+  resize: vertical;
+  border: 1px solid var(--color-border, #d8dce2);
+  border-radius: 0.75rem;
+  padding: 0.8rem;
+  color: inherit;
+  font: inherit;
+}
+
+.diary-generator__inputs p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
 }
 
 .diary-generator__primary,

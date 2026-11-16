@@ -9,16 +9,17 @@ import LocationPermissionDialog from '../../components/permission/LocationPermis
 import { useLocation } from '../../hooks/useLocation';
 import { useTimeline } from '../../hooks/useTimeline';
 import type { Activity, TimelineEvent } from '../../types';
-import { formatKoreanDate, getLocalDateString } from '../../utils/date';
+import { formatKoreanDateForDate, getKoreanDateString } from '../../utils/date';
 
 export default function TodayPage() {
   const today = new Date();
-  const date = getLocalDateString(today);
+  const date = getKoreanDateString(today);
   const { events, status, error, retry, confirmActivity, addNote } = useTimeline(date);
   const permission = useLocation();
   const [permissionDialogOpen, setPermissionDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<TimelineEvent | null>(null);
   const [voiceEvent, setVoiceEvent] = useState<TimelineEvent | null>(null);
+  const [latestTranscript, setLatestTranscript] = useState('');
   const hasLoaded = status === 'success' || status === 'empty';
   const closePermissionDialog = useCallback(() => setPermissionDialogOpen(false), []);
   const allowLocation = async () => {
@@ -39,6 +40,7 @@ export default function TodayPage() {
     async (note: string) => {
       if (!voiceEvent) return;
       await addNote(voiceEvent.id, note);
+      setLatestTranscript(note);
     },
     [addNote, voiceEvent],
   );
@@ -57,7 +59,7 @@ export default function TodayPage() {
       <header className="today-header" aria-labelledby="page-title">
         <p className="page-eyebrow">TODAY</p>
         <time className="today-header__date" dateTime={date}>
-          {formatKoreanDate(today)}
+          {formatKoreanDateForDate(date)}
         </time>
         <h1 id="page-title">오늘의 기록</h1>
         <p className="today-header__description">
@@ -103,6 +105,8 @@ export default function TodayPage() {
 
       <DiaryGenerator
         date={date}
+        transcript={latestTranscript}
+        onTranscriptChange={setLatestTranscript}
         events={events}
         timelineStatus={status}
         onReviewPending={focusTimelineEvent}

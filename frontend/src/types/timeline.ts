@@ -5,7 +5,8 @@ export type TimelineEventStatus =
   | 'CONFIRMED'
   | 'INFERRED'
   | 'UNCERTAIN'
-  | 'EMPTY';
+  | 'EMPTY'
+  | 'LOCATION';
 
 export interface TimelineEvent {
   id: string;
@@ -20,4 +21,14 @@ export interface TimelineEvent {
   userConfirmed: boolean;
   note: string | null;
   emotion: string | null;
+  durationMinutes?: number;
+  pointCount?: number;
 }
+
+export type TimelineLoadStatus =
+  | 'loading'
+  | 'success'
+  | 'empty'
+  | 'error'
+  | 'auth-required'
+  | 'configuration-error';

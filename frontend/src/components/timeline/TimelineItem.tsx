@@ -12,6 +12,8 @@ export default function TimelineItem({ event, onConfirmActivity, onAddMemory }: 
   const activityName =
     event.activity?.name && event.activity.name !== 'UNKNOWN'
       ? event.activity.name
+      : event.status === 'LOCATION'
+        ? '활동 정보 없음'
       : event.status === 'EMPTY'
         ? '활동 정보가 없습니다'
         : '행동 확인 필요';
@@ -48,6 +50,13 @@ export default function TimelineItem({ event, onConfirmActivity, onAddMemory }: 
         </div>
 
         <p className="timeline-activity">{activityName}</p>
+
+        {(event.durationMinutes !== undefined || event.pointCount !== undefined) && (
+          <p className="timeline-location-meta">
+            {event.durationMinutes !== undefined && <span>{formatDuration(event.durationMinutes)} 체류</span>}
+            {event.pointCount !== undefined && <span>위치 기록 {event.pointCount}개</span>}
+          </p>
+        )}
 
         {event.confidence !== null && (
           <p className="timeline-confidence">
@@ -93,4 +102,14 @@ export default function TimelineItem({ event, onConfirmActivity, onAddMemory }: 
       </article>
     </li>
   );
+}
+
+function formatDuration(durationMinutes: number): string {
+  if (durationMinutes < 60) {
+    return `${new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 1 }).format(durationMinutes)}분`;
+  }
+
+  const hours = Math.floor(durationMinutes / 60);
+  const minutes = Math.round(durationMinutes % 60);
+  return minutes > 0 ? `${hours}시간 ${minutes}분` : `${hours}시간`;
 }
