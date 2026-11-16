@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { VoiceRecordStatus } from '../types';
 import { services } from '../services';
+import { MAX_RECORDING_SECONDS } from '../services/voice/PcmWavRecorder';
+import { VoiceServiceError } from '../services/voice/VoiceServiceError';
 
 type VoiceFailureStage = 'start' | 'stop' | 'transcribe' | null;
 
@@ -42,11 +44,14 @@ export function useVoiceRecording(eventId: string, initialTranscript: string): U
     updateStatus('RECORDING');
     try {
       await services.voice.startRecording(eventId);
-      if (requestId !== requestIdRef.current) return;
-    } catch {
+      if (requestId !== requestIdRef.current) {
+        await services.voice.cancelRecording();
+        return;
+      }
+    } catch (startError) {
       if (requestId !== requestIdRef.current) return;
       failureStageRef.current = 'start';
-      setError('음성 기록을 시작하지 못했습니다. 다시 시도하거나 직접 입력해 주세요.');
+      setError(getVoiceErrorMessage(startError, '음성 기록을 시작하지 못했습니다. 다시 시도하거나 직접 입력해 주세요.'));
       updateStatus('ERROR');
     }
   }, [eventId, updateStatus]);
@@ -56,10 +61,10 @@ export function useVoiceRecording(eventId: string, initialTranscript: string): U
       if (shouldStop) {
         try {
           await services.voice.stopRecording();
-        } catch {
+        } catch (stopError) {
           if (requestId !== requestIdRef.current) return;
           failureStageRef.current = 'stop';
-          throw new Error('stop');
+          throw stopError;
         }
       }
 
@@ -71,9 +76,9 @@ export function useVoiceRecording(eventId: string, initialTranscript: string): U
       setError(null);
       failureStageRef.current = null;
       updateStatus('COMPLETED');
-    } catch {
+    } catch (transcriptionError) {
       if (requestId !== requestIdRef.current) return;
-      setError('음성 기록을 처리하지 못했습니다. 다시 시도하거나 직접 입력해 주세요.');
+      setError(getVoiceErrorMessage(transcriptionError, '음성 기록을 처리하지 못했습니다. 다시 시도하거나 직접 입력해 주세요.'));
       updateStatus('ERROR');
     }
   }, [updateStatus]);
@@ -119,9 +124,15 @@ export function useVoiceRecording(eventId: string, initialTranscript: string): U
     const timerId = window.setInterval(() => {
       setDuration((currentDuration) => currentDuration + 1);
     }, 1000);
+    const maxDurationTimerId = window.setTimeout(() => {
+      void stop();
+    }, MAX_RECORDING_SECONDS * 1000);
 
-    return () => window.clearInterval(timerId);
-  }, [status]);
+    return () => {
+      window.clearInterval(timerId);
+      window.clearTimeout(maxDurationTimerId);
+    };
+  }, [status, stop]);
 
   useEffect(() => () => {
     if (statusRef.current === 'RECORDING' || statusRef.current === 'PROCESSING') {
@@ -131,4 +142,8 @@ export function useVoiceRecording(eventId: string, initialTranscript: string): U
   }, []);
 
   return { status, duration, transcript, error, setTranscript, start, stop, cancel, retry };
+}
+
+function getVoiceErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof VoiceServiceError ? error.message : fallback;
 }
