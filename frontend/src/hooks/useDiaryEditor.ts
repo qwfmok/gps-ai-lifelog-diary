@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { services } from '../services';
 import type { Diary } from '../types';
+import { DiaryServiceError } from '../services/diary/DiaryApiService';
 
 interface UseDiaryEditorResult {
   isEditing: boolean;
@@ -26,11 +27,12 @@ export function useDiaryEditor(
   diary: Diary | null,
   onDiarySaved: (diary: Diary) => void,
   onDiaryDeleted: () => void,
+  initiallySaved = false,
 ): UseDiaryEditorResult {
   const [isEditing, setIsEditing] = useState(false);
   const [draftContent, setDraftContent] = useState(diary?.content ?? '');
   const [isSaving, setIsSaving] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
+  const [isSaved, setIsSaved] = useState(initiallySaved);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
@@ -38,6 +40,7 @@ export function useDiaryEditor(
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const currentDiaryIdRef = useRef(diary?.id ?? null);
+  const savedDiaryIdRef = useRef(initiallySaved ? diary?.id ?? null : null);
   const isSavingRef = useRef(false);
   const isDeletingRef = useRef(false);
 
@@ -46,15 +49,16 @@ export function useDiaryEditor(
     if (currentDiaryIdRef.current === nextDiaryId) return;
 
     currentDiaryIdRef.current = nextDiaryId;
+    if (initiallySaved && nextDiaryId) savedDiaryIdRef.current = nextDiaryId;
     setIsEditing(false);
     setDraftContent(diary?.content ?? '');
-    setIsSaved(false);
+    setIsSaved(savedDiaryIdRef.current === nextDiaryId);
     setSaveError(null);
     setValidationError(null);
     setSaveNotice(null);
     setIsDeleteDialogOpen(false);
     setDeleteError(null);
-  }, [diary?.content, diary?.id]);
+  }, [diary?.content, diary?.id, initiallySaved]);
 
   const startEditing = useCallback(() => {
     if (!diary) return;
@@ -95,18 +99,18 @@ export function useDiaryEditor(
     try {
       const savedDiary = isSaved
         ? await services.diary.updateDiary(diary.id, content)
-        : await services.diary.saveDiary({
-            ...diary,
+        : await services.diary.createDiary({
+            date: diary.date,
             content,
-            updatedAt: new Date().toISOString(),
           });
+      savedDiaryIdRef.current = savedDiary.id;
       onDiarySaved(savedDiary);
       setIsSaved(true);
       setDraftContent(savedDiary.content);
       setIsEditing(false);
       setSaveNotice('일기가 저장되었습니다.');
-    } catch {
-      setSaveError('일기를 저장하지 못했습니다. 다시 시도해 주세요.');
+    } catch (error) {
+      setSaveError(error instanceof DiaryServiceError ? error.message : '일기를 저장하지 못했습니다. 다시 시도해 주세요.');
     } finally {
       isSavingRef.current = false;
       setIsSaving(false);
@@ -134,8 +138,8 @@ export function useDiaryEditor(
       await services.diary.deleteDiary(diary.id);
       setIsDeleteDialogOpen(false);
       onDiaryDeleted();
-    } catch {
-      setDeleteError('일기를 삭제하지 못했습니다. 다시 시도해 주세요.');
+    } catch (error) {
+      setDeleteError(error instanceof DiaryServiceError ? error.message : '일기를 삭제하지 못했습니다. 다시 시도해 주세요.');
     } finally {
       isDeletingRef.current = false;
       setIsDeleting(false);

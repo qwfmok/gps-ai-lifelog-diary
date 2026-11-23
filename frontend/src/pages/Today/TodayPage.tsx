@@ -19,6 +19,7 @@ export default function TodayPage() {
   const [permissionDialogOpen, setPermissionDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<TimelineEvent | null>(null);
   const [voiceEvent, setVoiceEvent] = useState<TimelineEvent | null>(null);
+  const [latestTranscript, setLatestTranscript] = useState('');
   const hasLoaded = status === 'success' || status === 'empty';
   const closePermissionDialog = useCallback(() => setPermissionDialogOpen(false), []);
   const allowLocation = async () => {
@@ -39,6 +40,7 @@ export default function TodayPage() {
     async (note: string) => {
       if (!voiceEvent) return;
       await addNote(voiceEvent.id, note);
+      setLatestTranscript(note);
     },
     [addNote, voiceEvent],
   );
@@ -103,6 +105,8 @@ export default function TodayPage() {
 
       <DiaryGenerator
         date={date}
+        transcript={latestTranscript}
+        onTranscriptChange={setLatestTranscript}
         events={events}
         timelineStatus={status}
         onReviewPending={focusTimelineEvent}

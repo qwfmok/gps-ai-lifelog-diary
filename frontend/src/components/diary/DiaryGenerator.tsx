@@ -5,9 +5,12 @@ import { useDiaryEditor } from '../../hooks/useDiaryEditor';
 import DiaryPreview from './DiaryPreview';
 import DiaryEditor from './DiaryEditor';
 import DiaryDeleteDialog from './DiaryDeleteDialog';
+import { diaryGenerationSource } from '../../services';
 
 interface DiaryGeneratorProps {
   date: string;
+  transcript: string;
+  onTranscriptChange: (value: string) => void;
   events: TimelineEvent[];
   timelineStatus: TimelineLoadStatus;
   onReviewPending: (eventId: string) => void;
@@ -15,6 +18,8 @@ interface DiaryGeneratorProps {
 
 export default function DiaryGenerator({
   date,
+  transcript,
+  onTranscriptChange,
   events,
   timelineStatus,
   onReviewPending,
@@ -24,29 +29,31 @@ export default function DiaryGenerator({
     diary,
     error,
     generate,
-    retry,
     replaceDiary,
     reset,
   } = useDiaryGeneration(date);
   const editor = useDiaryEditor(diary, replaceDiary, reset);
+  const [memo, setMemo] = useState('');
+  const isApiSource = diaryGenerationSource === 'api';
   const [showReviewPrompt, setShowReviewPrompt] = useState(false);
   const pendingEvents = events.filter(
     (event) => event.status === 'UNCERTAIN' || event.status === 'EMPTY',
   );
   const timelineReady = timelineStatus === 'success' && events.length > 0;
 
+  const canGenerate = isApiSource ? status !== 'GENERATING' : timelineReady && status !== 'GENERATING';
   const requestGeneration = () => {
-    if (!timelineReady || status === 'GENERATING') return;
-    if (pendingEvents.length > 0) {
+    if (!canGenerate) return;
+    if (!isApiSource && pendingEvents.length > 0) {
       setShowReviewPrompt(true);
       return;
     }
-    void generate();
+    void generate(memo, transcript, isApiSource && editor.isSaved);
   };
 
   const generateAnyway = () => {
     setShowReviewPrompt(false);
-    void generate();
+    void generate(memo, transcript, isApiSource && editor.isSaved);
   };
 
   return (
@@ -57,20 +64,42 @@ export default function DiaryGenerator({
         <p>자동 기록과 추가한 기억을 바탕으로 오늘의 일기를 만들어볼까요?</p>
       </div>
 
-      {timelineStatus === 'loading' && (
+      {!isApiSource && timelineStatus === 'loading' && (
         <p className="diary-generator__availability" role="status">
           오늘의 기록을 불러온 뒤 일기를 만들 수 있습니다.
         </p>
       )}
-      {(timelineStatus === 'error' || timelineStatus === 'auth-required' || timelineStatus === 'configuration-error') && (
+      {!isApiSource && (timelineStatus === 'error' || timelineStatus === 'auth-required' || timelineStatus === 'configuration-error') && (
         <p className="diary-generator__availability" role="status">
           오늘의 기록을 불러오면 일기를 만들 수 있습니다.
         </p>
       )}
-      {(timelineStatus === 'empty' || (timelineStatus === 'success' && events.length === 0)) && (
+      {!isApiSource && (timelineStatus === 'empty' || (timelineStatus === 'success' && events.length === 0)) && (
         <p className="diary-generator__availability" role="status">
           오늘의 기록이 없어 일기를 생성할 수 없습니다.
         </p>
+      )}
+
+      {isApiSource && !editor.isEditing && status !== 'GENERATING' && (
+        <div className="diary-generator__inputs">
+          <label htmlFor="diary-generation-memo">오늘의 메모 (선택)</label>
+          <textarea
+            id="diary-generation-memo"
+            maxLength={4000}
+            onChange={(event) => setMemo(event.target.value)}
+            placeholder="일기에 담고 싶은 기억이나 감정을 적어 주세요."
+            value={memo}
+          />
+          <label htmlFor="diary-generation-transcript">음성 전사 내용 (선택)</label>
+          <textarea
+            id="diary-generation-transcript"
+            maxLength={12000}
+            onChange={(event) => onTranscriptChange(event.target.value)}
+            placeholder="음성 기록을 저장하면 수정한 전사 내용이 여기에 표시됩니다."
+            value={transcript}
+          />
+          <p>날짜별 장소와 저장된 기억은 Backend가 계정 기준으로 조회합니다.</p>
+        </div>
       )}
 
       {status === 'IDLE' && (
@@ -81,7 +110,7 @@ export default function DiaryGenerator({
           <button
             className="diary-generator__primary diary-generator__start"
             data-diary-generator-entry
-            disabled={!timelineReady}
+            disabled={!canGenerate}
             onClick={requestGeneration}
             type="button"
           >
@@ -90,7 +119,7 @@ export default function DiaryGenerator({
         </>
       )}
 
-      {showReviewPrompt && pendingEvents.length > 0 && status !== 'GENERATING' && (
+      {!isApiSource && showReviewPrompt && pendingEvents.length > 0 && status !== 'GENERATING' && (
         <div className="diary-review-prompt" role="group" aria-labelledby="diary-review-title">
           <h3 id="diary-review-title">
             아직 확인하지 않은 기록이 {pendingEvents.length}개 있습니다.
@@ -135,8 +164,8 @@ export default function DiaryGenerator({
           <p role="alert">{error ?? '일기를 생성하지 못했습니다.'}</p>
           <button
             className="diary-generator__primary"
-            disabled={!timelineReady}
-            onClick={() => void retry()}
+            disabled={!canGenerate}
+            onClick={() => void generate(memo, transcript, isApiSource && editor.isSaved)}
             type="button"
           >
             다시 시도
@@ -160,6 +189,7 @@ export default function DiaryGenerator({
       {diary && !editor.isEditing && (status === 'GENERATED' || status === 'ERROR') && (
         <DiaryPreview
           diary={diary}
+          isDraftOnly={isApiSource && !editor.isSaved}
           isSaved={editor.isSaved}
           saveNotice={editor.saveNotice}
           onEdit={editor.startEditing}

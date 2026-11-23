@@ -1128,6 +1128,35 @@ a {
   margin: 0;
 }
 
+.diary-generator__inputs {
+  display: grid;
+  gap: 0.55rem;
+  margin: 1rem 0;
+}
+
+.diary-generator__inputs label {
+  color: var(--color-text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.diary-generator__inputs textarea {
+  width: 100%;
+  min-height: 5rem;
+  resize: vertical;
+  border: 1px solid var(--color-border, #d8dce2);
+  border-radius: 0.75rem;
+  padding: 0.8rem;
+  color: inherit;
+  font: inherit;
+}
+
+.diary-generator__inputs p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+}
+
 .diary-generator__primary,
 .diary-generator__secondary,
 .diary-preview__regenerate {
