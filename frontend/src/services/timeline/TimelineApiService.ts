@@ -56,6 +56,9 @@ export class TimelineApiService implements TimelineDataService {
     }
     const event = events?.find((candidate) => candidate.id === eventId);
     if (!event) throw new TimelineApiError('VALIDATION', '선택한 체류 기록을 찾을 수 없습니다.');
+    if (event.note) {
+      throw new TimelineApiError('VALIDATION', '저장된 기억 수정은 아직 지원되지 않습니다.');
+    }
 
     const response = await this.request(this.buildApiUrl('/api/timeline/notes'), {
       method: 'POST',

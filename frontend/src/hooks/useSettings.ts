@@ -92,9 +92,9 @@ export function useSettings() {
       if (deleteAction === 'all') await services.voice.clearRecord();
 
       setMessage(
-        deleteAction === 'location' ? '위치 기록이 삭제되었습니다.'
+        deleteAction === 'location' ? '앱 내 위치 상태가 초기화되었습니다. 서버 위치 기록과 Timeline 기억은 유지됩니다.'
           : deleteAction === 'diaries' ? '저장된 일기가 삭제되었습니다.'
-            : '전체 데이터가 삭제되었습니다.',
+            : '앱 내 위치 상태와 저장된 일기가 삭제되었습니다. 서버 위치 기록과 Timeline 기억은 유지됩니다.',
       );
       setDeleteAction(null);
     } catch {

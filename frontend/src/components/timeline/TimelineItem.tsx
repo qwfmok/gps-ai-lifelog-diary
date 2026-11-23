@@ -1,5 +1,6 @@
 import type { TimelineEvent } from '../../types';
 import TimelineStatusBadge from './TimelineStatusBadge';
+import { timelineDataSource } from '../../services';
 
 interface TimelineItemProps {
   event: TimelineEvent;
@@ -90,14 +91,18 @@ export default function TimelineItem({ event, onConfirmActivity, onAddMemory }: 
               활동 확인하기
             </button>
           )}
-          <button
-            className="timeline-memory-button"
-            onClick={() => onAddMemory(event)}
-            type="button"
-            aria-haspopup="dialog"
-          >
-            {event.note ? '기억 수정' : '기억 추가'}
-          </button>
+          {event.note && timelineDataSource !== 'mock' ? (
+            <p className="timeline-memory__edit-note">저장된 기억 수정은 아직 지원되지 않습니다.</p>
+          ) : (
+            <button
+              className="timeline-memory-button"
+              onClick={() => onAddMemory(event)}
+              type="button"
+              aria-haspopup="dialog"
+            >
+              {event.note ? '기억 수정' : '기억 추가'}
+            </button>
+          )}
         </div>
       </article>
     </li>

@@ -129,7 +129,7 @@ export default function SettingsPage() {
               <span className="settings-toggle__text">{settings.isUpdatingTracking ? '변경 중' : settings.trackingEnabled ? '켜짐' : '꺼짐'}</span>
             </button>
           </div>
-          <p className="settings-card__note">위치 기록은 이 브라우저에서만 작동합니다. 앱이나 탭이 닫히면 추적이 종료되며, 백그라운드 추적은 지원하지 않습니다.</p>
+          <p className="settings-card__note">위치 기록은 앱이 활성화되어 있을 때 작동합니다. 앱이 종료되거나 백그라운드로 이동하면 추적이 중단될 수 있으며, 백그라운드 추적은 지원하지 않습니다.</p>
           <p className="settings-state" role="status" aria-live="polite">
             서버 저장: <strong>{settings.locationSaveStatus === 'SAVING' ? '저장 중'
               : settings.locationSaveStatus === 'SUCCESS' ? '최근 저장 성공'
@@ -170,10 +170,10 @@ export default function SettingsPage() {
         <div className="settings-card settings-card--current-location">
           <div className="settings-card__copy">
             <h3>현재 위치</h3>
-            <p>현재 위치는 버튼을 눌렀을 때 확인합니다. 웹 위치 기록은 앱이 열려 있는 동안에만 작동합니다.</p>
+            <p>현재 위치는 버튼을 눌렀을 때 확인합니다. 위치 추적은 앱이 활성화되어 있을 때 작동합니다.</p>
             {settings.locationStatus === 'LOADING' && <p className="settings-location__state" role="status">현재 위치를 확인하고 있습니다.</p>}
             {settings.locationStatus === 'SUCCESS' && !settings.trackingEnabled && <p className="settings-location__state" role="status">현재 위치를 확인했습니다.</p>}
-            {settings.trackingEnabled && <p className="settings-location__state" role="status">이 브라우저 세션에서 위치를 확인하고 있습니다.</p>}
+            {settings.trackingEnabled && <p className="settings-location__state" role="status">현재 앱에서 위치를 확인하고 있습니다.</p>}
             {settings.locationError && <p className="diary-editor__error" role="alert">{settings.locationError}</p>}
             {settings.currentPosition && (
               <dl className="settings-location__coordinates">
@@ -195,10 +195,10 @@ export default function SettingsPage() {
 
         <div className="settings-card settings-card--danger">
           <div className="settings-card__copy">
-            <h3>위치 기록 삭제</h3>
-            <p>이 브라우저의 Timeline과 위치 기록, 현재 위치 상태를 삭제하고 추적을 중지합니다. 서버에 저장된 위치는 삭제되지 않으며, 작성한 일기는 유지됩니다.</p>
+            <h3>앱 내 위치 상태 초기화</h3>
+            <p>위치 추적을 중지하고 이 앱의 임시 위치 기록과 현재 위치 상태를 지웁니다. Backend에 저장된 위치 기록과 Timeline 기억은 삭제되지 않으며, 작성한 일기는 유지됩니다.</p>
           </div>
-          <button className="settings-danger-button" onClick={() => settings.requestDelete('location')} type="button">위치 기록 삭제</button>
+          <button className="settings-danger-button" onClick={() => settings.requestDelete('location')} type="button">앱 내 위치 상태 초기화</button>
         </div>
       </section>
 
@@ -227,10 +227,10 @@ export default function SettingsPage() {
 
         <div className="settings-card settings-card--danger settings-card--all-data">
           <div className="settings-card__copy">
-            <h3>전체 데이터 삭제</h3>
-            <p>위치 기록, 저장된 일기, 음성 Mock 결과를 삭제합니다. 이 작업은 현재 Mock 환경에서 되돌릴 수 없습니다.</p>
+            <h3>앱 내 위치 상태와 모든 일기 삭제</h3>
+            <p>위치 추적을 중지하고 앱의 임시 위치 상태와 저장된 일기를 삭제합니다. 서버 위치 기록과 Timeline 기억은 삭제되지 않습니다.</p>
           </div>
-          <button className="settings-danger-button" onClick={() => settings.requestDelete('all')} type="button">전체 데이터 삭제</button>
+          <button className="settings-danger-button" onClick={() => settings.requestDelete('all')} type="button">위치 상태와 일기 삭제</button>
         </div>
       </section>
 
@@ -245,9 +245,9 @@ export default function SettingsPage() {
           <ul>
             <li>위치 추적 중 수신한 좌표를 설정된 Backend에 저장합니다.</li>
             <li>시간과 장소를 바탕으로 하루 Timeline을 구성합니다.</li>
-            <li>하루의 맥락을 이해하기 위한 행동 후보를 준비합니다.</li>
+            <li>체류 장소와 시간을 바탕으로 하루의 흐름을 구성합니다.</li>
           </ul>
-          <p>위치 기록 삭제는 현재 브라우저 데이터에 적용됩니다. 서버 위치 기록 삭제 기능은 Backend API에 준비되어 있지 않습니다.</p>
+          <p>앱 내 위치 상태 초기화는 이 앱의 임시 상태에만 적용됩니다. 서버 위치 기록과 Timeline 기억을 삭제하는 기능은 아직 제공되지 않습니다.</p>
         </div>
       </section>
 

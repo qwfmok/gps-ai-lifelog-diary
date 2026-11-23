@@ -11,9 +11,9 @@ interface SettingsConfirmationDialogProps {
 
 const dialogCopy: Record<SettingsDeleteAction, { title: string; description: string; confirm: string }> = {
   location: {
-    title: '위치 기록을 삭제하시겠습니까?',
-    description: '저장된 Timeline과 위치 기록이 삭제되고 현재 위치 추적이 중지됩니다. 일기는 유지되며, 복구할 수 없습니다.',
-    confirm: '위치 기록 삭제',
+    title: '앱 내 위치 상태를 초기화하시겠습니까?',
+    description: '위치 추적을 중지하고 이 앱의 임시 위치 기록과 현재 위치 상태를 지웁니다. 서버 위치 기록과 Timeline 기억은 유지되며, 저장된 일기도 유지됩니다.',
+    confirm: '앱 내 위치 상태 초기화',
   },
   diaries: {
     title: '모든 일기를 삭제하시겠습니까?',
@@ -21,9 +21,9 @@ const dialogCopy: Record<SettingsDeleteAction, { title: string; description: str
     confirm: '모든 일기 삭제',
   },
   all: {
-    title: '전체 데이터를 삭제하시겠습니까?',
-    description: '위치 기록, 저장된 일기, 음성 Mock 결과가 모두 삭제됩니다. 현재 Mock 환경에서는 복구할 수 없습니다.',
-    confirm: '전체 데이터 삭제',
+    title: '앱 내 위치 상태와 모든 일기를 삭제하시겠습니까?',
+    description: '위치 추적을 중지하고 이 앱의 임시 위치 상태와 저장된 일기를 삭제합니다. 서버 GPS 위치 기록과 Timeline 기억은 삭제되지 않습니다.',
+    confirm: '위치 상태와 일기 삭제',
   },
 };
 
@@ -92,7 +92,7 @@ export default function SettingsConfirmationDialog({
         {action === 'all' && (
           <label className="settings-confirm-acknowledgement">
             <input checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} type="checkbox" />
-            <span>위치 기록과 모든 일기가 삭제되는 것을 확인했습니다.</span>
+            <span>앱 내 위치 상태와 저장된 일기가 삭제되며 서버 위치 기록과 Timeline 기억은 남는다는 점을 확인했습니다.</span>
           </label>
         )}
         {error && <p className="diary-editor__error" role="alert">{error}</p>}

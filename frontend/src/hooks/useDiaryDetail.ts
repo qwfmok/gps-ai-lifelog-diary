@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { services } from '../services';
 import type { Diary, TimelineEvent } from '../types';
 import { DiaryServiceError } from '../services/diary/DiaryApiService';
+import { TimelineApiError } from '../services/timeline/TimelineApiService';
 
 type DiaryDetailStatus = 'loading' | 'success' | 'notFound' | 'auth-required' | 'configuration-error' | 'error';
 
@@ -9,6 +10,7 @@ export function useDiaryDetail(diaryId: string | undefined) {
   const [diary, setDiary] = useState<Diary | null>(null);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [timelineLoading, setTimelineLoading] = useState(false);
+  const [timelineError, setTimelineError] = useState<string | null>(null);
   const [status, setStatus] = useState<DiaryDetailStatus>('loading');
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -19,6 +21,7 @@ export function useDiaryDetail(diaryId: string | undefined) {
     let active = true;
     setDiary(null);
     setTimeline([]);
+    setTimelineError(null);
     setStatus('loading');
     setError(null);
     setTimelineLoading(true);
@@ -38,9 +41,15 @@ export function useDiaryDetail(diaryId: string | undefined) {
       }
       setDiary(result);
       setStatus('success');
-      return services.timeline.getTimeline(result.date)
+      return services.timelineData.getTimelineByDate(result.date)
         .then((events) => { if (active) setTimeline(events); })
-        .catch(() => { if (active) setTimeline([]); })
+        .catch((timelineLoadError: unknown) => {
+          if (!active) return;
+          setTimeline([]);
+          setTimelineError(timelineLoadError instanceof TimelineApiError
+            ? timelineLoadError.message
+            : '하루의 흐름을 불러오지 못했습니다. 다시 시도해 주세요.');
+        })
         .finally(() => { if (active) setTimelineLoading(false); });
     }).catch((loadError) => {
       if (!active) return;
@@ -54,7 +63,7 @@ export function useDiaryDetail(diaryId: string | undefined) {
     return () => { active = false; };
   }, [attempt, diaryId]);
 
-  return { diary, setDiary, timeline, timelineLoading, status, error, retry };
+  return { diary, setDiary, timeline, timelineLoading, timelineError, status, error, retry };
 }
 
 function getDetailErrorStatus(error: unknown): DiaryDetailStatus {
