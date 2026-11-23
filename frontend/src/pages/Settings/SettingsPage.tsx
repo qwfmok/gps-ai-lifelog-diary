@@ -1,14 +1,20 @@
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router';
+import { useNavigate } from 'react-router';
 import LocationPermissionDialog from '../../components/permission/LocationPermissionDialog';
 import PermissionStatus from '../../components/permission/PermissionStatus';
 import SettingsConfirmationDialog from '../../components/settings/SettingsConfirmationDialog';
 import { useSettings } from '../../hooks/useSettings';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function SettingsPage() {
   const settings = useSettings();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const [permissionDialogOpen, setPermissionDialogOpen] = useState(false);
   const [permissionNotice, setPermissionNotice] = useState<string | null>(null);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
   const closePermissionDialog = useCallback(() => setPermissionDialogOpen(false), []);
 
   const handleAllowPermission = async () => {
@@ -41,6 +47,20 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSignOut = async () => {
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    setSignOutError(null);
+    try {
+      await signOut();
+      navigate('/login', { replace: true });
+    } catch (error) {
+      setSignOutError(error instanceof Error ? error.message : '로그아웃하지 못했습니다. 다시 시도해 주세요.');
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
+
   return (
     <div className="settings-page">
       <header className="page-intro" aria-labelledby="page-title">
@@ -57,6 +77,28 @@ export default function SettingsPage() {
       )}
       {settings.message && <p className="settings-feedback" role="status" aria-live="polite">{settings.message}</p>}
       {permissionNotice && <p className="settings-feedback" role="status" aria-live="polite">{permissionNotice}</p>}
+
+      <section className="settings-section" aria-labelledby="settings-account-title">
+        <div className="settings-section__heading">
+          <p className="page-eyebrow">ACCOUNT</p>
+          <h2 id="settings-account-title">계정</h2>
+        </div>
+        <div className="settings-card settings-account-card">
+          <div className="settings-card__copy">
+            <h3>로그인 계정</h3>
+            <p>{user?.email ?? '계정 정보 없음'}</p>
+          </div>
+          <button
+            className="settings-secondary-button"
+            disabled={isSigningOut}
+            onClick={() => { void handleSignOut(); }}
+            type="button"
+          >
+            {isSigningOut ? '로그아웃 중...' : '로그아웃'}
+          </button>
+          {signOutError && <p className="settings-feedback settings-feedback--error" role="alert">{signOutError}</p>}
+        </div>
+      </section>
 
       <section className="settings-section" aria-labelledby="settings-location-title">
         <div className="settings-section__heading">
