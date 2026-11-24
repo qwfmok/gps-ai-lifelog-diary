@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import LocationPermissionDialog from '../../components/permission/LocationPermissionDialog';
 import PermissionStatus from '../../components/permission/PermissionStatus';
 import SettingsConfirmationDialog from '../../components/settings/SettingsConfirmationDialog';
+import LocationImportPanel from '../../components/settings/LocationImportPanel';
 import { useSettings } from '../../hooks/useSettings';
 
 export default function SettingsPage() {
@@ -157,6 +158,10 @@ export default function SettingsPage() {
             <p>이 브라우저의 Timeline과 위치 기록, 현재 위치 상태를 삭제하고 추적을 중지합니다. 서버에 저장된 위치는 삭제되지 않으며, 작성한 일기는 유지됩니다.</p>
           </div>
           <button className="settings-danger-button" onClick={() => settings.requestDelete('location')} type="button">위치 기록 삭제</button>
+        </div>
+
+        <div className="settings-card">
+          <LocationImportPanel />
         </div>
       </section>
 

@@ -1,8 +1,6 @@
 from asyncio import to_thread
 from datetime import date, datetime, time, timedelta, timezone
-import logging
 
-import httpx
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 
@@ -12,7 +10,7 @@ from app.schemas.location import LocationCreate, LocationResponse
 from app.schemas.stay_point import StayPointResponse
 from app.services.geocoding import reverse_geocode
 from app.services.location_import import parse_location_file
-from app.services.place_inference import infer_place_and_activity
+from app.services.place_inference import enrich_stays_with_places
 from app.services.stay_points import detect_stay_points
 
 
@@ -22,11 +20,11 @@ router = APIRouter(
 )
 
 KST = timezone(timedelta(hours=9))
-logger = logging.getLogger(__name__)
 
 
 class LocationImportResponse(BaseModel):
     imported_count: int
+    visit_count: int
     stays: list[StayPointResponse]
 
 
@@ -36,10 +34,8 @@ async def import_locations(
     user_id: str = Depends(require_user_id),
 ):
     content = await file.read(10 * 1024 * 1024 + 1)
-    if len(content) > 10 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="파일은 10 MiB 이하여야 합니다.")
     try:
-        points = parse_location_file(file.filename or "", content)
+        imported = parse_location_file(file.filename or "", content)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -52,33 +48,52 @@ async def import_locations(
             "recorded_at": point.recorded_at.astimezone(timezone.utc).isoformat(),
             "address": None,
         }
-        for point in points
+        for point in imported.points
     ]
     for offset in range(0, len(data), 500):
         query = supabase.table("location_logs").insert(data[offset:offset + 500])
         await to_thread(query.execute)
 
-    stays = detect_stay_points(data)
-    for stay in stays:
-        stay["address"] = None
-        try:
-            stay["address"] = await reverse_geocode(
-                latitude=stay["latitude"], longitude=stay["longitude"]
-            )
-        except httpx.HTTPError as exc:
-            logger.warning("Imported stay address lookup failed: %s", type(exc).__name__)
-        guesses = infer_place_and_activity(stay["address"])
-        stay["place_category"] = guesses[0].category if guesses else None
-        stay["activity_candidates"] = [
-            {
-                "name": guess.activity,
-                "confidence": guess.confidence,
-                "source": "place_name_heuristic",
-            }
-            for guess in guesses
-        ]
+    visits_data = [
+        {
+            "user_id": user_id,
+            "latitude": visit.latitude,
+            "longitude": visit.longitude,
+            "source_place_name": visit.source_place_name,
+            "started_at": visit.started_at.astimezone(timezone.utc).isoformat(),
+            "ended_at": visit.ended_at.astimezone(timezone.utc).isoformat(),
+        }
+        for visit in imported.visits
+    ]
+    for offset in range(0, len(visits_data), 500):
+        query = supabase.table("imported_visits").upsert(
+            visits_data[offset:offset + 500],
+            on_conflict="user_id,latitude,longitude,started_at,ended_at",
+        )
+        await to_thread(query.execute)
 
-    return {"imported_count": len(points), "stays": stays}
+    stays = detect_stay_points(data)
+    stays.extend({
+        "latitude": visit.latitude,
+        "longitude": visit.longitude,
+        "started_at": visit.started_at,
+        "ended_at": visit.ended_at,
+        "duration_minutes": (visit.ended_at - visit.started_at).total_seconds() / 60,
+        "point_count": 0,
+        "place_name": visit.source_place_name,
+    } for visit in imported.visits)
+    stays.sort(key=lambda stay: (
+        datetime.fromisoformat(stay["started_at"].replace("Z", "+00:00"))
+        if isinstance(stay["started_at"], str)
+        else stay["started_at"]
+    ))
+    await enrich_stays_with_places(stays)
+
+    return {
+        "imported_count": len(imported.points),
+        "visit_count": len(stays),
+        "stays": stays,
+    }
 
 
 @router.post("", response_model=LocationResponse)
