@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { services } from '../services';
 import { useLocation } from './useLocation';
+import { getLocalDateString } from '../utils/date';
+import { locationApiErrorMessage } from '../utils/locationApiErrorMessage';
 
 export type SettingsDeleteAction = 'location' | 'diaries' | 'all';
 
@@ -13,7 +15,24 @@ export function useSettings() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [locationCount, setLocationCount] = useState<number | null>(null);
+  const [locationQueryStatus, setLocationQueryStatus] = useState<'IDLE' | 'LOADING' | 'SUCCESS' | 'ERROR'>('IDLE');
+  const [locationQueryError, setLocationQueryError] = useState<string | null>(null);
   const isDeletingRef = useRef(false);
+
+  const refreshLocationCount = useCallback(async () => {
+    setLocationQueryStatus('LOADING');
+    setLocationQueryError(null);
+    try {
+      const records = await services.locationApi.getLocationsByDate(getLocalDateString());
+      setLocationCount(records.length);
+      setLocationQueryStatus('SUCCESS');
+    } catch (queryError) {
+      setLocationCount(null);
+      setLocationQueryStatus('ERROR');
+      setLocationQueryError(locationApiErrorMessage(queryError));
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
     setIsLoading(true);
@@ -29,6 +48,10 @@ export function useSettings() {
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void refreshLocationCount(); }, [refreshLocationCount]);
+  useEffect(() => {
+    if (location.locationSaveStatus === 'SUCCESS') void refreshLocationCount();
+  }, [location.locationSaveStatus, refreshLocationCount]);
 
   const toggleTracking = useCallback(async () => {
     if (!location.trackingEnabled && location.permissionStatus !== 'GRANTED') return false;
@@ -92,6 +115,10 @@ export function useSettings() {
     locationSaveStatus: location.locationSaveStatus,
     locationSaveError: location.locationSaveError,
     lastLocationSavedAt: location.lastLocationSavedAt,
+    locationCount,
+    locationQueryStatus,
+    locationQueryError,
+    refreshLocationCount,
     requestCurrentPosition: location.requestCurrentPosition,
     permissionStatus: location.permissionStatus,
     isCheckingPermission: location.isCheckingPermission,

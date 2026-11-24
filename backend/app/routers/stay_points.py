@@ -1,28 +1,25 @@
 import logging
-import httpx
-
 from asyncio import to_thread
 from datetime import date, datetime, time, timedelta, timezone
 
-from fastapi import APIRouter, Query
+import httpx
+from fastapi import APIRouter, Depends, Query
 
+from app.core.auth import require_user_id
 from app.db.supabase import supabase
-from app.services.geocoding import reverse_geocode
-from app.services.stay_points import detect_stay_points
 from app.schemas.stay_point import StayPointResponse
+from app.services.geocoding import reverse_geocode
+from app.services.place_inference import infer_place_and_activity
+from app.services.stay_points import detect_stay_points
 
-router = APIRouter(
-    prefix="/api/stay-points",
-    tags=["stay-points"],
-)
+
+router = APIRouter(prefix="/api/stay-points", tags=["stay-points"])
 
 KST = timezone(timedelta(hours=9))
 logger = logging.getLogger(__name__)
 
-@router.get("", response_model=list[StayPointResponse])
-async def get_stay_points(
-    target_date: date = Query(..., alias="date"),
-):
+
+async def build_daily_stays(target_date: date, user_id: str):
     start = datetime.combine(target_date, time.min, tzinfo=KST)
     end = start + timedelta(days=1)
 
@@ -38,6 +35,7 @@ async def get_stay_points(
             supabase
             .table("location_logs")
             .select("id,latitude,longitude,recorded_at")
+            .eq("user_id", user_id)
             .gte("recorded_at", start_utc)
             .lt("recorded_at", end_utc)
             .order("recorded_at")
@@ -58,7 +56,6 @@ async def get_stay_points(
 
     for stay in stays:
         stay["address"] = None
-
         try:
             stay["address"] = await reverse_geocode(
                 latitude=stay["latitude"],
@@ -69,5 +66,23 @@ async def get_stay_points(
                 "Stay point address lookup failed: %s",
                 type(exc).__name__,
             )
+        guesses = infer_place_and_activity(stay["address"])
+        stay["place_category"] = guesses[0].category if guesses else None
+        stay["activity_candidates"] = [
+            {
+                "name": guess.activity,
+                "confidence": guess.confidence,
+                "source": "place_name_heuristic",
+            }
+            for guess in guesses
+        ]
 
     return stays
+
+
+@router.get("", response_model=list[StayPointResponse])
+async def get_stay_points(
+    target_date: date = Query(..., alias="date"),
+    user_id: str = Depends(require_user_id),
+):
+    return await build_daily_stays(target_date, user_id)

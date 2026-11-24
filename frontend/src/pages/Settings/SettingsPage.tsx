@@ -95,6 +95,17 @@ export default function SettingsPage() {
             {settings.lastLocationSavedAt && ` · ${new Date(settings.lastLocationSavedAt).toLocaleTimeString()}`}
           </p>
           {settings.locationSaveError && <p className="diary-editor__error" role="alert">{settings.locationSaveError}</p>}
+          <p className="settings-state" role="status" aria-live="polite">
+            오늘 서버 위치 기록: <strong>{settings.locationQueryStatus === 'LOADING' ? '조회 중'
+              : settings.locationQueryStatus === 'SUCCESS' ? `${settings.locationCount ?? 0}개`
+                : settings.locationQueryStatus === 'ERROR' ? '조회 실패' : '대기 중'}</strong>
+          </p>
+          {settings.locationQueryError && (
+            <div className="settings-feedback settings-feedback--error" role="alert">
+              <p>{settings.locationQueryError}</p>
+              <button className="settings-inline-button" onClick={() => { void settings.refreshLocationCount(); }} type="button">다시 조회</button>
+            </div>
+          )}
         </div>
 
         <div className="settings-card">

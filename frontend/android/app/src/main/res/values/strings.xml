@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">LifeLog Diary</string>
+    <string name="title_activity_main">LifeLog Diary</string>
+    <string name="package_name">com.gpsailifelogdiary.app</string>
+    <string name="custom_url_scheme">com.gpsailifelogdiary.app</string>
+</resources>

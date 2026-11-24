@@ -10,20 +10,19 @@ from app.routers import stay_points
 
 class StayPointAddressTests(unittest.IsolatedAsyncioTestCase):
     async def test_kakao_failure_preserves_stay(self):
+        user_id = "test-user"
         locations = [
             {
                 "id": str(index),
                 "latitude": 37.5665,
                 "longitude": 126.978,
-                "recorded_at": (
-                    f"2026-10-20T09:{minute:02d}:00+09:00"
-                ),
+                "recorded_at": f"2026-10-20T09:{minute:02d}:00+09:00",
             }
             for index, minute in enumerate([0, 5, 10, 15])
         ]
 
         query = MagicMock()
-        for method in ["select", "gte", "lt", "order", "range"]:
+        for method in ["select", "eq", "gte", "lt", "order", "range"]:
             getattr(query, method).return_value = query
 
         query.execute.return_value = SimpleNamespace(data=locations)
@@ -42,8 +41,10 @@ class StayPointAddressTests(unittest.IsolatedAsyncioTestCase):
 
             result = await stay_points.get_stay_points(
                 target_date=date(2026, 10, 20),
+                user_id=user_id,
             )
 
+        query.eq.assert_called_once_with("user_id", user_id)
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["duration_minutes"], 15)
         self.assertEqual(result[0]["point_count"], 4)

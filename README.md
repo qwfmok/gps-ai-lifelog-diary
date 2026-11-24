@@ -79,7 +79,7 @@ docs/       설계, 일정, 평가 계획
 
 저장소 루트에서 `python -m pip install -r backend/diary/requirements-diary.txt`로 의존성을 설치합니다. `backend/.env`에 `OPENAI_API_KEY`를 설정하고 [일기 프롬프트](backend/diary/prompt.txt)를 준비합니다.
 
-FastAPI 서버가 실행 중이면 날짜를 지정해 해당 날짜의 체류지로 일기를 생성할 수 있습니다.
+FastAPI 서버가 실행 중이면 날짜를 지정해 해당 날짜의 체류지로 일기를 생성할 수 있습니다. Supabase 로그인 세션에서 발급된 `access_token`을 `backend/.env` 또는 환경 변수의 `SUPABASE_ACCESS_TOKEN`에 설정합니다. 토큰이 만료되면 다시 로그인한 뒤 새 토큰으로 갱신합니다.
 
 ```powershell
 python -m backend.diary.diary_cli --date 2026-11-09
@@ -87,5 +87,17 @@ python -m backend.diary.diary_cli --date 2026-11-09
 
 CLI는 `GET /api/stay-points`에서 체류지를 조회해 주소(`address`), 한국 시간으로 변환한 시작·종료 시각(`started_at`, `ended_at`), 체류 시간(분, `duration_minutes`)을 시작 시각순으로 전달합니다. 주소를 조회할 수 없는 체류지는 `address`가 `null`입니다. 서버 주소가 다르면 `--backend-url`로 지정할 수 있습니다.
 
-`--date`를 생략하면 장소와 시간을 직접 입력할 수 있습니다. STT 전사문을 붙여넣고 마지막 줄에 `END`를 입력하거나 `--stt-file`로 TXT 파일을 지정합니다. 결과는 기본적으로 `backend/diary/output/`에 저장됩니다.
+`--date`를 생략하면 로그인 토큰 없이 장소와 시간을 직접 입력할 수 있습니다. STT 전사문을 붙여넣고 마지막 줄에 `END`를 입력하거나 `--stt-file`로 TXT 파일을 지정합니다. 결과는 기본적으로 `backend/diary/output/`에 저장됩니다.
+
+### 위치 파일 가져오기와 활동 후보 추론
+
+인증된 사용자는 `POST /api/locations/import`에 CSV 또는 JSON 위치 파일을 multipart 필드 `file`로 업로드할 수 있습니다. 파일은 최대 10 MiB, 위치 기록은 최대 10,000개입니다. CSV 헤더는 `latitude,longitude,recorded_at`이며, `accuracy`는 선택 항목입니다. JSON은 위치 객체 배열 또는 `{ "locations": [...] }` 형식이고, 시간 필드는 `recorded_at`, `timestamp`, `time`, `timestampMs` 중 하나를 사용합니다. 시간에는 시간대가 포함되어야 합니다.
+
+업로드된 좌표는 로그인 사용자의 `location_logs`에 저장됩니다. 응답의 `stays`는 해당 파일에서 탐지된 체류지이며, 주소 이름의 키워드가 알려진 장소 유형과 맞으면 낮은 신뢰도의 `activity_candidates`를 함께 반환합니다. 이는 장소 이름 기반 규칙 후보이므로 사용자 확인이 필요합니다. 기존 날짜별 체류지 API인 `GET /api/stay-points?date=YYYY-MM-DD`도 `place_category`와 `activity_candidates`를 반환합니다.
+
+```text
+Authorization: Bearer <Supabase access token>
+Content-Type: multipart/form-data
+file: locations.csv
+```
 
