@@ -34,7 +34,7 @@ export interface ApplicationServices {
 }
 
 const timelineService = new MockTimelineService();
-const timelineDataSource = import.meta.env.VITE_TIMELINE_SOURCE ?? 'mock';
+export const timelineDataSource = import.meta.env.VITE_TIMELINE_SOURCE ?? 'mock';
 const timelineData = timelineDataSource === 'mock'
   ? new MockTimelineDataService(timelineService)
   : new TimelineApiService();

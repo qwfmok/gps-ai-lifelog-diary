@@ -1458,6 +1458,17 @@ a {
   color: #fffefa;
 }
 
+.diary-preview__save {
+  border: 1px solid #405b4c;
+  background: #eef3eb;
+  color: #405b4c;
+}
+
+.diary-preview__save:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .diary-preview__actions .diary-preview__regenerate {
   justify-self: auto;
   margin: 0;

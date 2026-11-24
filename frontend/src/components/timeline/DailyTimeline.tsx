@@ -5,6 +5,7 @@ interface DailyTimelineProps {
   events: TimelineEvent[];
   status: TimelineLoadStatus;
   error: string | null;
+  trackingEnabled: boolean;
   onRetry: () => void;
   onConfirmActivity: (event: TimelineEvent) => void;
   onAddMemory: (event: TimelineEvent) => void;
@@ -14,6 +15,7 @@ export default function DailyTimeline({
   events,
   status,
   error,
+  trackingEnabled,
   onRetry,
   onConfirmActivity,
   onAddMemory,
@@ -41,8 +43,17 @@ export default function DailyTimeline({
   if (status === 'empty' || events.length === 0) {
     return (
       <div className="timeline-state timeline-state--empty" role="status">
-        <p className="timeline-state__title">아직 오늘의 기록이 없습니다.</p>
-        <p>위치 기록이 시작되면 하루의 흐름이 여기에 표시됩니다.</p>
+        <p className="timeline-state__title">
+          {trackingEnabled ? '위치를 기록하고 있습니다.' : '아직 오늘의 기록이 없습니다.'}
+        </p>
+        <p>
+          {trackingEnabled
+            ? '한 장소에 약 15분 이상 머무르면 하루의 흐름에 자동으로 표시됩니다.'
+            : '위치 기록을 켜고 한 장소에 약 15분 이상 머무르면 하루의 흐름에 표시됩니다.'}
+        </p>
+        {trackingEnabled && (
+          <button className="timeline-retry-button" onClick={onRetry} type="button">하루의 흐름 다시 확인</button>
+        )}
       </div>
     );
   }

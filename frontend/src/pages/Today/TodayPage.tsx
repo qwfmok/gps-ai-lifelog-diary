@@ -97,6 +97,7 @@ export default function TodayPage() {
           events={events}
           status={status}
           error={error}
+          trackingEnabled={permission.trackingEnabled}
           onRetry={retry}
           onConfirmActivity={setSelectedEvent}
           onAddMemory={setVoiceEvent}

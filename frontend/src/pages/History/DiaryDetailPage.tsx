@@ -6,9 +6,11 @@ import { useDiaryDetail } from '../../hooks/useDiaryDetail';
 import { useDiaryEditor } from '../../hooks/useDiaryEditor';
 import { formatKoreanDateWithYear } from '../../utils/date';
 
-function DiaryTimelineSummary({ events, loading }: {
+function DiaryTimelineSummary({ events, loading, error, onRetry }: {
   events: ReturnType<typeof useDiaryDetail>['timeline'];
   loading: boolean;
+  error: string | null;
+  onRetry: () => void;
 }) {
   return (
     <section className="diary-detail__timeline" aria-labelledby="diary-timeline-title">
@@ -16,8 +18,13 @@ function DiaryTimelineSummary({ events, loading }: {
         <p className="page-eyebrow">THE DAY</p>
         <h2 id="diary-timeline-title">하루의 흐름</h2>
       </div>
-      {loading ? <p className="diary-detail__muted" role="status">하루 기록을 불러오는 중입니다.</p> : events.length === 0 ? (
-        <p className="diary-detail__muted">연결된 하루 기록이 없습니다.</p>
+      {loading ? <p className="diary-detail__muted" role="status">하루 기록을 불러오는 중입니다.</p> : error ? (
+        <div className="diary-detail__muted" role="alert">
+          <p>{error}</p>
+          <button className="timeline-retry-button" onClick={onRetry} type="button">다시 시도</button>
+        </div>
+      ) : events.length === 0 ? (
+        <p className="diary-detail__muted">이 날짜의 위치 기록이 없습니다.</p>
       ) : (
         <ol className="diary-detail__events">
           {events.map((event) => (
@@ -35,7 +42,7 @@ function DiaryTimelineSummary({ events, loading }: {
 export default function DiaryDetailPage() {
   const { diaryId } = useParams();
   const navigate = useNavigate();
-  const { diary, setDiary, timeline, timelineLoading, status, error, retry } = useDiaryDetail(diaryId);
+  const { diary, setDiary, timeline, timelineLoading, timelineError, status, error, retry } = useDiaryDetail(diaryId);
   const onDiarySaved = useCallback((savedDiary: NonNullable<typeof diary>) => setDiary(savedDiary), [setDiary]);
   const onDiaryDeleted = useCallback(() => navigate('/history', { replace: true }), [navigate]);
   const editor = useDiaryEditor(diary, onDiarySaved, onDiaryDeleted, true);
@@ -105,7 +112,12 @@ export default function DiaryDetailPage() {
             </section>
           )}
 
-          <DiaryTimelineSummary events={timeline} loading={timelineLoading} />
+          <DiaryTimelineSummary
+            events={timeline}
+            loading={timelineLoading}
+            error={timelineError}
+            onRetry={retry}
+          />
 
           <dl className="diary-detail__timestamps">
             <div><dt>작성</dt><dd><time dateTime={diary.createdAt}>{new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(diary.createdAt))}</time></dd></div>

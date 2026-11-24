@@ -189,10 +189,13 @@ export default function DiaryGenerator({
       {diary && !editor.isEditing && (status === 'GENERATED' || status === 'ERROR') && (
         <DiaryPreview
           diary={diary}
-          isDraftOnly={isApiSource && !editor.isSaved}
+          isDraftOnly={!editor.isSaved}
           isSaved={editor.isSaved}
           saveNotice={editor.saveNotice}
+          saveError={editor.saveError}
+          isSaving={editor.isSaving}
           onEdit={editor.startEditing}
+          onSave={() => void editor.save()}
           onRegenerate={requestGeneration}
           onDelete={editor.requestDelete}
         />
