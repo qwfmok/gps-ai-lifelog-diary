@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router';
 import LocationPermissionDialog from '../../components/permission/LocationPermissionDialog';
 import PermissionStatus from '../../components/permission/PermissionStatus';
 import SettingsConfirmationDialog from '../../components/settings/SettingsConfirmationDialog';
+import LocationImportPanel from '../../components/settings/LocationImportPanel';
 import { useSettings } from '../../hooks/useSettings';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -199,6 +200,10 @@ export default function SettingsPage() {
             <p>위치 추적을 중지하고 이 앱의 임시 위치 기록과 현재 위치 상태를 지웁니다. Backend에 저장된 위치 기록과 Timeline 기억은 삭제되지 않으며, 작성한 일기는 유지됩니다.</p>
           </div>
           <button className="settings-danger-button" onClick={() => settings.requestDelete('location')} type="button">앱 내 위치 상태 초기화</button>
+        </div>
+
+        <div className="settings-card">
+          <LocationImportPanel />
         </div>
       </section>
 

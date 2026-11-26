@@ -12,6 +12,8 @@ async def reverse_geocode(
     latitude: float,
     longitude: float,
 ) -> str | None:
+    if not KAKAO_REST_API_KEY:
+        return None
 
     headers = {
         "Authorization": f"KakaoAK {KAKAO_REST_API_KEY}"

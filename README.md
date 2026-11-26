@@ -88,4 +88,15 @@ python -m backend.diary.diary_cli --date 2026-11-09
 CLI는 `GET /api/stay-points`에서 체류지를 조회해 주소(`address`), 한국 시간으로 변환한 시작·종료 시각(`started_at`, `ended_at`), 체류 시간(분, `duration_minutes`)을 시작 시각순으로 전달합니다. 주소를 조회할 수 없는 체류지는 `address`가 `null`입니다. 서버 주소가 다르면 `--backend-url`로 지정할 수 있습니다.
 
 `--date`를 생략하면 로그인 토큰 없이 장소와 시간을 직접 입력할 수 있습니다. STT 전사문을 붙여넣고 마지막 줄에 `END`를 입력하거나 `--stt-file`로 TXT 파일을 지정합니다. 결과는 기본적으로 `backend/diary/output/`에 저장됩니다.
+### 위치 파일 가져오기와 장소·활동 후보
+
+설정의 **위치 파일 가져오기**에서 CSV 또는 Google Timeline JSON을 선택하고 Supabase 로그인 토큰을 입력하면 파일을 서버로 전송합니다. 토큰은 브라우저에 저장하지 않습니다. CSV에는 `latitude,longitude,recorded_at` 열이 필요하고 `accuracy`는 선택입니다. JSON은 위치 배열(`locations`)이나 Google Timeline의 `semanticSegments` 또는 `timelineObjects` 방문 구간을 지원합니다. 파일은 최대 10 MiB, 위치·방문 기록은 각각 최대 10,000개입니다. Google Timeline 방문 구간을 저장하려면 Supabase에 [가져온 방문 테이블 SQL](backend/sql/imported_visits.sql)을 먼저 적용합니다.
+
+원시 좌표는 로그인 사용자의 `location_logs`에 저장하고 Timeline 방문 구간은 `imported_visits`에 저장합니다. 두 기록 모두 주변 100m 안의 Kakao 장소명·카테고리를 조회하고 활동 후보와 신뢰도를 반환합니다. 후보는 장소 카테고리 기반 추정이므로 확정 기록으로 취급하지 않고 사용자가 확인해야 합니다. 직접 API를 호출할 때는 `POST /api/locations/import`의 multipart 필드 `file`을 사용합니다. 날짜별 체류지 API `GET /api/stay-points?date=YYYY-MM-DD`도 주변 장소와 활동 후보를 반환합니다.
+
+### 일기에 AI 장소 추론 반영
+
+프런트엔드에서 `VITE_DIARY_SOURCE=api`를 설정하고, 백엔드에서 `DIARY_GENERATION_MODE=openai`, `OPENAI_API_KEY`, `OPENAI_DIARY_MODEL`, `KAKAO_REST_API_KEY`를 설정합니다. `OPENAI_DIARY_MODEL`에는 구조화된 출력을 지원하는 모델을 지정합니다.
+
+‘오늘의 일기 만들기’를 누르면 그날의 체류 기록과 위치 파일에서 가져온 방문 기록이 반영됩니다. ‘현재 위치 추가’로 한 번 확인한 위치도 포함할 수 있습니다. 좌표는 Kakao 지도 조회에 사용하고, AI는 지도 후보의 이름·주소·거리와 GPS 정확도를 비교합니다. 초안의 ‘장소 추론 결과’에서 추정 장소를 확인할 수 있으며, 장소를 특정하기 어려우면 확인된 주소를 활용합니다.
 

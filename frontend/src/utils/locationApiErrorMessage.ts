@@ -23,6 +23,8 @@ export function locationApiErrorMessage(error: unknown): string {
         : '네트워크 문제로 위치 API에 연결할 수 없습니다.';
     case 'VALIDATION':
       return '서버가 위치 정보나 날짜 형식을 확인해 달라고 응답했습니다.';
+    case 'AUTH':
+      return '로그인 토큰을 확인해 주세요.';
     case 'SERVER':
       return '서버에서 위치 요청을 처리하지 못했습니다.';
     case 'PROTOCOL':

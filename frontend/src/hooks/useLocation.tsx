@@ -24,7 +24,7 @@ interface LocationContextValue {
   locationSaveStatus: LocationSaveStatus;
   locationSaveError: string | null;
   lastLocationSavedAt: string | null;
-  requestCurrentPosition: () => Promise<void>;
+  requestCurrentPosition: (askPermission?: boolean) => Promise<LocationPoint | null>;
   toggleTracking: () => Promise<void>;
   stopTracking: () => Promise<void>;
   clearLocationHistory: () => Promise<void>;
@@ -70,24 +70,28 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const requestCurrentPosition = useCallback(async () => {
-    if (positionRequestInProgress.current) return;
-    if (permission.permissionStatus !== 'GRANTED') {
-      setLocationStatus(permission.permissionStatus === 'UNAVAILABLE' ? 'UNAVAILABLE' : 'ERROR');
-      setLocationError(permission.permissionStatus === 'UNAVAILABLE'
-        ? '현재 환경에서는 위치 기능을 사용할 수 없습니다.'
-        : '위치 사용 권한을 먼저 허용해 주세요.');
-      return;
-    }
-
+  const requestCurrentPosition = useCallback(async (askPermission = false) => {
+    if (positionRequestInProgress.current) return null;
     positionRequestInProgress.current = true;
     setIsGettingPosition(true);
     setLocationStatus('LOADING');
     setLocationError(null);
     try {
+      const permissionStatus = askPermission && permission.permissionStatus === 'UNKNOWN'
+        ? await permission.requestPermission()
+        : permission.permissionStatus;
+      if (permissionStatus !== 'GRANTED') {
+        setLocationStatus(permissionStatus === 'UNAVAILABLE' ? 'UNAVAILABLE' : 'ERROR');
+        setLocationError(permissionStatus === 'UNAVAILABLE'
+          ? '현재 환경에서는 위치 기능을 사용할 수 없습니다.'
+          : '위치 사용 권한을 먼저 허용해 주세요.');
+        return null;
+      }
       const point = await services.location.getCurrentPosition();
+      if (!isValidLocation(point)) throw new LocationServiceError('POSITION_UNAVAILABLE');
       setCurrentPosition(point);
       setLocationStatus('SUCCESS');
+      return point;
     } catch (error) {
       const result = presentLocationError(error);
       setLocationStatus(result.unavailable ? 'UNAVAILABLE' : 'ERROR');
@@ -95,11 +99,12 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       if (error instanceof LocationServiceError && error.code === 'PERMISSION_DENIED') {
         await permission.refreshPermissionStatus();
       }
+      return null;
     } finally {
       positionRequestInProgress.current = false;
       setIsGettingPosition(false);
     }
-  }, [permission.permissionStatus, permission.refreshPermissionStatus]);
+  }, [permission.permissionStatus, permission.refreshPermissionStatus, permission.requestPermission]);
 
   const toggleTracking = useCallback(async () => {
     if (trackingOperationInProgress.current) return;

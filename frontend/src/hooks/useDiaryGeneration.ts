@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { services } from '../services';
 import type { Diary, DiaryGenerationStatus } from '../types';
 import { DiaryGenerationError } from '../services/diary/DiaryGenerationApiService';
-import type { DiaryGenerationResult } from '../services/diary/DiaryGenerationService';
+import type { DiaryGenerationInput, DiaryGenerationResult } from '../services/diary/DiaryGenerationService';
+
+type DiaryGenerationOptions = Omit<DiaryGenerationInput, 'date'>;
 
 interface DiaryGenerationState {
   status: DiaryGenerationStatus;
@@ -12,7 +14,7 @@ interface DiaryGenerationState {
 }
 
 interface UseDiaryGenerationResult extends DiaryGenerationState {
-  generate: (memo?: string, transcript?: string, preserveDiaryIdentity?: boolean) => Promise<void>;
+  generate: (options?: DiaryGenerationOptions, preserveDiaryIdentity?: boolean) => Promise<void>;
   retry: () => Promise<void>;
   replaceDiary: (diary: Diary) => void;
   reset: () => void;
@@ -28,22 +30,21 @@ export function useDiaryGeneration(date: string): UseDiaryGenerationResult {
   const statusRef = useRef<DiaryGenerationStatus>('IDLE');
   const requestIdRef = useRef(0);
   const currentDateRef = useRef(date);
-  const lastInputRef = useRef({ memo: '', transcript: '' });
+  const lastInputRef = useRef<DiaryGenerationOptions>({});
 
   const generate = useCallback(async (
-    memo = lastInputRef.current.memo,
-    transcript = lastInputRef.current.transcript,
+    options = lastInputRef.current,
     preserveDiaryIdentity = false,
   ) => {
     if (statusRef.current === 'GENERATING') return;
-    lastInputRef.current = { memo, transcript };
+    lastInputRef.current = options;
 
     const requestId = ++requestIdRef.current;
     statusRef.current = 'GENERATING';
     setState((currentState) => ({ ...currentState, status: 'GENERATING', error: null }));
 
     try {
-      const result = await services.diaryGeneration.generateDiaryDraft({ date, memo, transcript });
+      const result = await services.diaryGeneration.generateDiaryDraft({ ...options, date });
       if (requestId !== requestIdRef.current) return;
 
       statusRef.current = 'GENERATED';

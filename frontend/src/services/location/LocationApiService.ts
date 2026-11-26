@@ -14,6 +14,25 @@ export interface LocationApiResponse extends LocationCreateRequest {
   address: string | null;
 }
 
+export interface ImportedStayResponse {
+  latitude: number;
+  longitude: number;
+  started_at: string;
+  ended_at: string;
+  duration_minutes: number;
+  address: string | null;
+  place_name: string | null;
+  place_category: string | null;
+  place_distance_meters: number | null;
+  activity_candidates: Array<{ name: string; confidence: number; source: string }>;
+}
+
+export interface LocationImportResponse {
+  imported_count: number;
+  visit_count: number;
+  stays: ImportedStayResponse[];
+}
+
 export type LocationApiErrorKind =
   | 'CONFIGURATION'
   | 'INSECURE_TRANSPORT'
@@ -21,6 +40,7 @@ export type LocationApiErrorKind =
   | 'AUTHENTICATION'
   | 'NETWORK'
   | 'VALIDATION'
+  | 'AUTH'
   | 'SERVER'
   | 'PROTOCOL';
 
@@ -109,6 +129,45 @@ export class LocationApiService {
     return result.map(parseLocationResponse);
   }
 
+  async importLocationFile(file: File, accessToken: string): Promise<LocationImportResponse> {
+    this.validateApiBaseUrl();
+    if (!/\.(csv|json)$/i.test(file.name)) {
+      throw new LocationApiError('VALIDATION', 'CSV 또는 JSON 파일을 선택해 주세요.');
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      throw new LocationApiError('VALIDATION', '파일은 10 MiB 이하여야 합니다.');
+    }
+    if (!accessToken.trim()) {
+      throw new LocationApiError('AUTH', 'Supabase 로그인 토큰을 입력해 주세요.');
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/api/locations/import`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken.trim()}` },
+        body: formData,
+      });
+    } catch {
+      throw new LocationApiError('NETWORK', '위치 파일을 보내지 못했습니다. 서버 연결을 확인해 주세요.');
+    }
+    if (response.status === 401) throw new LocationApiError('AUTH', '로그인 토큰이 만료되었거나 유효하지 않습니다.');
+    if (response.status === 413 || response.status === 415 || response.status === 422) {
+      throw new LocationApiError('VALIDATION', await readApiDetail(response));
+    }
+    if (!response.ok) this.throwResponseError(response);
+
+    let result: unknown;
+    try {
+      result = await response.json();
+    } catch {
+      throw new LocationApiError('PROTOCOL', '가져오기 결과를 읽지 못했습니다.');
+    }
+    return parseImportResponse(result);
+  }
+
   private validateApiBaseUrl(): void {
     const isAndroid = Capacitor.getPlatform() === 'android';
     if (!this.baseUrl) {
@@ -153,6 +212,63 @@ export class LocationApiService {
     if (response.status === 422) throw new LocationApiError('VALIDATION', 'The location API rejected the request.');
     throw new LocationApiError('SERVER', `Location API returned ${response.status}.`);
   }
+}
+
+async function readApiDetail(response: Response): Promise<string> {
+  try {
+    const payload: unknown = await response.json();
+    if (typeof payload === 'object' && payload !== null && 'detail' in payload
+      && typeof payload.detail === 'string') return payload.detail;
+  } catch {
+    // Use the local validation message when the backend has no readable detail.
+  }
+  return '파일 형식이나 위치 기록을 확인해 주세요.';
+}
+
+function parseImportResponse(value: unknown): LocationImportResponse {
+  if (typeof value !== 'object' || value === null) {
+    throw new LocationApiError('PROTOCOL', '가져오기 응답 형식이 올바르지 않습니다.');
+  }
+  const record = value as Record<string, unknown>;
+  if (typeof record.imported_count !== 'number' || typeof record.visit_count !== 'number'
+    || !Array.isArray(record.stays)) {
+    throw new LocationApiError('PROTOCOL', '가져오기 응답에 필수 정보가 없습니다.');
+  }
+  return {
+    imported_count: record.imported_count,
+    visit_count: record.visit_count,
+    stays: record.stays.map((value) => {
+      if (typeof value !== 'object' || value === null) {
+        throw new LocationApiError('PROTOCOL', '장소 추론 결과 형식이 올바르지 않습니다.');
+      }
+      const stay = value as Record<string, unknown>;
+      if (typeof stay.latitude !== 'number' || typeof stay.longitude !== 'number'
+        || typeof stay.started_at !== 'string' || typeof stay.ended_at !== 'string'
+        || typeof stay.duration_minutes !== 'number' || !Array.isArray(stay.activity_candidates)) {
+        throw new LocationApiError('PROTOCOL', '장소 추론 결과에 필수 정보가 없습니다.');
+      }
+      return {
+        latitude: stay.latitude,
+        longitude: stay.longitude,
+        started_at: stay.started_at,
+        ended_at: stay.ended_at,
+        duration_minutes: stay.duration_minutes,
+        address: typeof stay.address === 'string' ? stay.address : null,
+        place_name: typeof stay.place_name === 'string' ? stay.place_name : null,
+        place_category: typeof stay.place_category === 'string' ? stay.place_category : null,
+        place_distance_meters: typeof stay.place_distance_meters === 'number'
+          ? stay.place_distance_meters : null,
+        activity_candidates: stay.activity_candidates.filter(isActivityCandidate),
+      };
+    }),
+  };
+}
+
+function isActivityCandidate(value: unknown): value is { name: string; confidence: number; source: string } {
+  return typeof value === 'object' && value !== null
+    && 'name' in value && typeof value.name === 'string'
+    && 'confidence' in value && typeof value.confidence === 'number'
+    && 'source' in value && typeof value.source === 'string';
 }
 
 function parseLocationResponse(value: unknown): LocationApiResponse {
