@@ -143,11 +143,16 @@ export class LocationApiService {
 
     const formData = new FormData();
     formData.append('file', file);
-    const response = await this.request(`${this.baseUrl}/api/locations/import`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${accessToken.trim()}` },
-      body: formData,
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/api/locations/import`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken.trim()}` },
+        body: formData,
+      });
+    } catch {
+      throw new LocationApiError('NETWORK', '위치 파일을 보내지 못했습니다. 서버 연결을 확인해 주세요.');
+    }
     if (response.status === 401) throw new LocationApiError('AUTH', '로그인 토큰이 만료되었거나 유효하지 않습니다.');
     if (response.status === 413 || response.status === 415 || response.status === 422) {
       throw new LocationApiError('VALIDATION', await readApiDetail(response));

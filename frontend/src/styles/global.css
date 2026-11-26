@@ -1259,6 +1259,23 @@ a {
   font-size: 0.82rem;
 }
 
+.diary-generator__location-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.diary-preview__places {
+  margin: 0.75rem 0;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.diary-preview__places summary {
+  cursor: pointer;
+}
+
 .diary-generator__primary,
 .diary-generator__secondary,
 .diary-preview__regenerate {

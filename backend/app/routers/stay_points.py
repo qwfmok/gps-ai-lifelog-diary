@@ -1,8 +1,6 @@
-import logging
 from asyncio import to_thread
 from datetime import date, datetime, time, timedelta, timezone
 
-import httpx
 from fastapi import APIRouter, Depends, Query
 
 from app.core.auth import require_user_id
@@ -15,10 +13,11 @@ from app.services.stay_points import detect_stay_points
 router = APIRouter(prefix="/api/stay-points", tags=["stay-points"])
 
 KST = timezone(timedelta(hours=9))
-logger = logging.getLogger(__name__)
 
 
-async def build_daily_stays(target_date: date, user_id: str):
+async def build_daily_stays(
+    target_date: date, user_id: str, *, include_place_candidates: bool = False
+):
     start = datetime.combine(target_date, time.min, tzinfo=KST)
     end = start + timedelta(days=1)
 
@@ -91,7 +90,7 @@ async def build_daily_stays(target_date: date, user_id: str):
         else stay["started_at"]
     ))
 
-    return await enrich_stays_with_places(stays)
+    return await enrich_stays_with_places(stays, include_place_candidates=include_place_candidates)
 
 
 @router.get("", response_model=list[StayPointResponse])

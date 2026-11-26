@@ -1,4 +1,5 @@
-import os, json
+import json
+import os
 from openai import OpenAIError
 from asyncio import to_thread
 from datetime import date, datetime, timezone
@@ -10,11 +11,14 @@ from pydantic import BaseModel, Field, field_validator
 from app.core.auth import require_user_id
 from app.db.supabase import supabase
 from app.services.diary_generator import generate_diary_draft
+from app.services.diary_places import resolve_diary_places
+from app.services.place_inference import enrich_stays_with_places
 from app.schemas.diary import (
+    DiaryCurrentLocation,
     DiaryGenerateRequest,
     DiaryGenerateResponse,
 )
-from app.routers.stay_points import build_daily_stays
+from app.routers.stay_points import KST, build_daily_stays
 from app.routers.timeline import load_timeline_notes
 
 
@@ -24,21 +28,37 @@ router = APIRouter(
 )
 DIARY_COLUMNS = "id,diary_date,content,created_at,updated_at"
 
-async def load_diary_context(diary_date: date, user_id: str) -> dict:
-    stays = await build_daily_stays(diary_date, user_id)
+async def load_diary_context(
+    diary_date: date,
+    user_id: str,
+    current_location: DiaryCurrentLocation | None,
+    *,
+    api_key: str | None,
+    model: str | None,
+) -> dict:
+    stays = await build_daily_stays(diary_date, user_id, include_place_candidates=True)
     notes = await load_timeline_notes(diary_date, user_id)
+    current = []
+    if current_location is not None:
+        current = await enrich_stays_with_places(
+            [current_location.model_dump(mode="json")], include_place_candidates=True
+        )
+    places = await resolve_diary_places(stays + current, api_key=api_key, model=model)
 
     return {
         "date": diary_date.isoformat(),
         "stays": [
             {
-                "address": stay["address"],
+                **place,
                 "started_at": stay["started_at"],
                 "ended_at": stay["ended_at"],
                 "duration_minutes": stay["duration_minutes"],
             }
-            for stay in stays
+            for stay, place in zip(stays, places)
         ],
+        "current_location": (
+            {**places[-1], "recorded_at": current[0]["recorded_at"]} if current else None
+        ),
         "notes": [row["note"] for row in notes],
     }
     
@@ -54,6 +74,8 @@ async def generate_diary(
         raise HTTPException(status_code=422, detail="메모는 4000자 이하여야 합니다.")
     if data.location_ids:
         raise HTTPException(status_code=422, detail="location_ids 대신 diary_date를 사용하세요.")
+    if data.current_location and data.current_location.recorded_at.astimezone(KST).date() != data.diary_date:
+        raise HTTPException(status_code=422, detail="현재 위치는 일기 날짜에 확인한 위치만 사용할 수 있습니다.")
 
     mode = os.getenv("DIARY_GENERATION_MODE", "mock")
     if mode not in {"mock", "openai"}:
@@ -64,14 +86,32 @@ async def generate_diary(
     if mode == "openai" and (not api_key or not model):
         raise HTTPException(status_code=503, detail="일기 생성 설정이 필요합니다.")
 
-    context = {"date": None, "stays": [], "notes": []}
+    context = {"date": None, "stays": [], "current_location": None, "notes": []}
     if data.diary_date is not None:
-        context = await load_diary_context(data.diary_date, user_id)
+        context = await load_diary_context(
+            data.diary_date, user_id, data.current_location,
+            api_key=api_key if mode == "openai" else None, model=model,
+        )
 
     facts = [text for text in (memo, transcript) if text]
+    uncertain_points = []
     for stay in context["stays"]:
-        address = stay["address"] or "주소 미확인 장소"
-        facts.append(f"{address}에서 {stay['duration_minutes']:g}분 체류")
+        label = stay["address"]
+        if stay["place_inferred"]:
+            uncertain_points.append(f"체류 장소 추정 · {stay['place_name']}")
+        elif stay["place_name"]:
+            label = stay["place_name"]
+        else:
+            uncertain_points.append(f"체류 장소 미확인 · {label or '주소 미확인'}")
+        facts.append(f"{label or '장소 미확인 위치'}에서 {stay['duration_minutes']:g}분 체류")
+    current = context["current_location"]
+    if current:
+        if current["place_inferred"]:
+            uncertain_points.append(f"현재 장소 추정 · {current['place_name']}")
+        else:
+            uncertain_points.append("현재 위치의 장소 이름을 특정하지 못했습니다.")
+        address = current["address"]
+        facts.append(f"현재 위치 확인 · {address}" if address else "현재 위치를 확인함")
     facts.extend(context["notes"])
 
     if not facts:
@@ -103,7 +143,7 @@ async def generate_diary(
     return DiaryGenerateResponse(
         generated_diary=draft,
         used_facts=facts,
-        uncertain_points=[],
+        uncertain_points=list(dict.fromkeys(uncertain_points)),
     )
     
 class DiaryContent(BaseModel):

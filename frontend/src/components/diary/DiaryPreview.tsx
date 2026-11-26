@@ -5,6 +5,7 @@ interface DiaryPreviewProps {
   diary: Diary;
   isDraftOnly?: boolean;
   isSaved: boolean;
+  uncertainPoints?: string[];
   saveNotice: string | null;
   saveError: string | null;
   isSaving: boolean;
@@ -18,6 +19,7 @@ export default function DiaryPreview({
   diary,
   isDraftOnly = false,
   isSaved,
+  uncertainPoints = [],
   saveNotice,
   saveError,
   isSaving,
@@ -38,6 +40,14 @@ export default function DiaryPreview({
         <span className="diary-preview__status">{isDraftOnly ? '생성 초안 · 미저장' : isSaved ? '저장됨' : '생성 완료'}</span>
       </div>
       <p className="diary-preview__content">{diary.content}</p>
+      {uncertainPoints.length > 0 && (
+        <details className="diary-preview__places">
+          <summary>장소 추론 결과</summary>
+          <ul>
+            {uncertainPoints.map((point) => <li key={point}>{point}</li>)}
+          </ul>
+        </details>
+      )}
       {saveNotice && <p className="diary-preview__notice" role="status">{saveNotice}</p>}
       {saveError && <p className="diary-editor__error" role="alert">{saveError}</p>}
       <div className="diary-preview__actions">

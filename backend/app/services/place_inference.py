@@ -3,7 +3,7 @@ import logging
 import httpx
 
 from app.services.geocoding import reverse_geocode
-from app.services.place_lookup import NearbyPlace, find_nearby_place
+from app.services.place_lookup import NearbyPlace, find_nearby_places
 
 
 logger = logging.getLogger(__name__)
@@ -54,29 +54,40 @@ def infer_from_place_name(place_name: str | None) -> list[dict]:
     return []
 
 
-async def enrich_stays_with_places(stays: list[dict]) -> list[dict]:
+async def enrich_stays_with_places(
+    stays: list[dict], *, include_place_candidates: bool = False
+) -> list[dict]:
     """Look up venues once per nearby coordinate cluster, then enrich stays."""
-    cache: dict[tuple[float, float], tuple[NearbyPlace | None, str | None]] = {}
+    cache: dict[tuple[float, float], tuple[list[NearbyPlace], str | None]] = {}
     for stay in stays:
         source_place_name = stay.get("place_name")
         key = (round(stay["latitude"], 4), round(stay["longitude"], 4))
         if key not in cache:
-            place = None
+            places = []
             address = None
             try:
-                place = await find_nearby_place(stay["latitude"], stay["longitude"])
+                places = await find_nearby_places(
+                    stay["latitude"], stay["longitude"],
+                    per_category=3 if include_place_candidates else 1,
+                )
             except httpx.HTTPError as exc:
                 logger.warning("Nearby place lookup failed: %s", type(exc).__name__)
-            if place is None:
+            if not places or include_place_candidates:
                 try:
                     address = await reverse_geocode(
                         latitude=stay["latitude"], longitude=stay["longitude"]
                     )
                 except httpx.HTTPError as exc:
                     logger.warning("Stay point address lookup failed: %s", type(exc).__name__)
-            cache[key] = (place, address)
+            cache[key] = (places, address)
 
-        place, address = cache[key]
+        places, address = cache[key]
+        if include_place_candidates:
+            stay["nearby_places"] = places[:5]
+            stay["observed_address"] = address
+            stay["source_place_name"] = source_place_name
+
+        place = places[0] if places else None
         if place:
             stay["place_name"] = place.name
             stay["address"] = place.address

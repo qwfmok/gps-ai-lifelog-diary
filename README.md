@@ -94,3 +94,9 @@ CLI는 `GET /api/stay-points`에서 체류지를 조회해 주소(`address`), �
 
 원시 좌표는 로그인 사용자의 `location_logs`에 저장하고 Timeline 방문 구간은 `imported_visits`에 저장합니다. 두 기록 모두 주변 100m 안의 Kakao 장소명·카테고리를 조회하고 활동 후보와 신뢰도를 반환합니다. 후보는 장소 카테고리 기반 추정이므로 확정 기록으로 취급하지 않고 사용자가 확인해야 합니다. 직접 API를 호출할 때는 `POST /api/locations/import`의 multipart 필드 `file`을 사용합니다. 날짜별 체류지 API `GET /api/stay-points?date=YYYY-MM-DD`도 주변 장소와 활동 후보를 반환합니다.
 
+### 일기에 AI 장소 추론 반영
+
+프런트엔드에서 `VITE_DIARY_SOURCE=api`를 설정하고, 백엔드에서 `DIARY_GENERATION_MODE=openai`, `OPENAI_API_KEY`, `OPENAI_DIARY_MODEL`, `KAKAO_REST_API_KEY`를 설정합니다. `OPENAI_DIARY_MODEL`에는 구조화된 출력을 지원하는 모델을 지정합니다.
+
+‘오늘의 일기 만들기’를 누르면 그날의 체류 기록과 위치 파일에서 가져온 방문 기록이 반영됩니다. ‘현재 위치 추가’로 한 번 확인한 위치도 포함할 수 있습니다. 좌표는 Kakao 지도 조회에 사용하고, AI는 지도 후보의 이름·주소·거리와 GPS 정확도를 비교합니다. 초안의 ‘장소 추론 결과’에서 추정 장소를 확인할 수 있으며, 장소를 특정하기 어려우면 확인된 주소를 활용합니다.
+

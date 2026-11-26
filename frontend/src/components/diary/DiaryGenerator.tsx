@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import type { TimelineEvent, TimelineLoadStatus } from '../../types';
+import type { LocationPoint, TimelineEvent, TimelineLoadStatus } from '../../types';
 import { useDiaryGeneration } from '../../hooks/useDiaryGeneration';
 import { useDiaryEditor } from '../../hooks/useDiaryEditor';
+import { useLocation } from '../../hooks/useLocation';
+import { getKoreanDateString } from '../../utils/date';
 import DiaryPreview from './DiaryPreview';
 import DiaryEditor from './DiaryEditor';
 import DiaryDeleteDialog from './DiaryDeleteDialog';
@@ -27,13 +29,17 @@ export default function DiaryGenerator({
   const {
     status,
     diary,
+    result,
     error,
     generate,
     replaceDiary,
     reset,
   } = useDiaryGeneration(date);
   const editor = useDiaryEditor(diary, replaceDiary, reset);
+  const location = useLocation();
   const [memo, setMemo] = useState('');
+  const [position, setPosition] = useState<LocationPoint>();
+  const [positionRequested, setPositionRequested] = useState(false);
   const isApiSource = diaryGenerationSource === 'api';
   const [showReviewPrompt, setShowReviewPrompt] = useState(false);
   const pendingEvents = events.filter(
@@ -41,19 +47,31 @@ export default function DiaryGenerator({
   );
   const timelineReady = timelineStatus === 'success' && events.length > 0;
 
-  const canGenerate = isApiSource ? status !== 'GENERATING' : timelineReady && status !== 'GENERATING';
+  const currentLocation = position && getKoreanDateString(new Date(position.recordedAt)) === date
+    ? position
+    : undefined;
+  const canGenerate = status !== 'GENERATING' && (isApiSource ? !location.isGettingPosition : timelineReady);
+  const submit = () => {
+    if (canGenerate) void generate({ memo, transcript, currentLocation }, isApiSource && editor.isSaved);
+  };
   const requestGeneration = () => {
     if (!canGenerate) return;
     if (!isApiSource && pendingEvents.length > 0) {
       setShowReviewPrompt(true);
       return;
     }
-    void generate(memo, transcript, isApiSource && editor.isSaved);
+    submit();
   };
 
   const generateAnyway = () => {
     setShowReviewPrompt(false);
-    void generate(memo, transcript, isApiSource && editor.isSaved);
+    submit();
+  };
+
+  const addCurrentLocation = async () => {
+    setPositionRequested(true);
+    const point = await location.requestCurrentPosition(true);
+    if (point) setPosition(point);
   };
 
   return (
@@ -98,7 +116,31 @@ export default function DiaryGenerator({
             placeholder="음성 기록을 저장하면 수정한 전사 내용이 여기에 표시됩니다."
             value={transcript}
           />
-          <p>날짜별 장소와 저장된 기억은 Backend가 계정 기준으로 조회합니다.</p>
+          <p id="diary-location-description">
+            오늘의 위치 기록에서 장소를 추론합니다. 현재 위치를 추가하면 GPS 좌표를 주변 장소 조회에 사용합니다.
+          </p>
+          {currentLocation ? (
+            <div className="diary-generator__location-actions">
+              <p role="status">현재 위치가 이번 일기 생성에 포함됩니다.</p>
+              <button className="diary-generator__secondary" onClick={() => {
+                setPosition(undefined);
+                setPositionRequested(false);
+              }} type="button">현재 위치 제외</button>
+            </div>
+          ) : (
+            <div className="diary-generator__location-actions">
+              <button
+                aria-describedby="diary-location-description"
+                className="diary-generator__secondary"
+                disabled={location.isCheckingPermission || location.isGettingPosition}
+                onClick={() => { void addCurrentLocation(); }}
+                type="button"
+              >
+                {positionRequested && location.isGettingPosition ? '현재 위치 확인 중…' : '현재 위치 추가'}
+              </button>
+              {positionRequested && location.locationError && <p role="alert">{location.locationError}</p>}
+            </div>
+          )}
         </div>
       )}
 
@@ -165,7 +207,7 @@ export default function DiaryGenerator({
           <button
             className="diary-generator__primary"
             disabled={!canGenerate}
-            onClick={() => void generate(memo, transcript, isApiSource && editor.isSaved)}
+            onClick={submit}
             type="button"
           >
             다시 시도
@@ -191,6 +233,7 @@ export default function DiaryGenerator({
           diary={diary}
           isDraftOnly={!editor.isSaved}
           isSaved={editor.isSaved}
+          uncertainPoints={result?.uncertainPoints}
           saveNotice={editor.saveNotice}
           saveError={editor.saveError}
           isSaving={editor.isSaving}

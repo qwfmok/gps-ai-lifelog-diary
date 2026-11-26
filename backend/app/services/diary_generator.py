@@ -6,10 +6,15 @@ def load_context_instructions() -> str:
     prompt = Path(__file__).with_name("diary_context_prompt.txt")
     return prompt.read_text(encoding="utf-8-sig").strip() + """
 
-    이 API에서는 JSON으로 날짜(date), 체류 기록(stays), 저장 메모(notes),
-    요청 메모(memo), 음성 전사문(transcript)을 받는다. 빈 항목은 무시한다.
+    이 API에서는 JSON으로 날짜(date), 체류 기록(stays), 현재 위치(current_location),
+    저장 메모(notes), 요청 메모(memo), 음성 전사문(transcript)을 받는다. 빈 항목은 무시한다.
 
     체류 기록에서는 장소와 관측된 체류 시간만 서술한다.
+    place_name은 입력에 있는 이름만 사용한다. place_inferred가 true라면
+    '○○ 근처로 추정되는 곳'처럼 장소의 불확실성을 본문에 드러낸다.
+    장소 이름이 없으면 주소를 사용하며 주소도 없으면 장소를 특정하지 않는다.
+    current_location은 한 시점의 관측이므로 방문 여부나 체류 시간을 추정하지 않는다.
+    현재 위치와 체류 기록의 장소가 같으면 장소 이름은 한 번만 서술한다.
     장소나 체류 시간만으로 방문 목적, 행동, 감정, 동행인을 추측하지 않는다.
     근거가 없다면 “짧은 용무를 본 것 같다”처럼 완곡하게도 추측하지 않는다.
     체류 장소에서 프로젝트 활동을 했다는 연결은 입력에 명시된 경우에만 서술한다.

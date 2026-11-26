@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 
 from app.routers import stay_points
+from app.services import place_inference
 
 
 class StayPointAddressTests(unittest.IsolatedAsyncioTestCase):
@@ -25,12 +26,13 @@ class StayPointAddressTests(unittest.IsolatedAsyncioTestCase):
         for method in ["select", "eq", "gte", "lt", "order", "range"]:
             getattr(query, method).return_value = query
 
-        query.execute.return_value = SimpleNamespace(data=locations)
+        query.execute.side_effect = [SimpleNamespace(data=locations), SimpleNamespace(data=[])]
 
         with (
             patch.object(stay_points, "supabase") as database,
+            patch.object(place_inference, "find_nearby_places", new=AsyncMock(return_value=[])),
             patch.object(
-                stay_points,
+                place_inference,
                 "reverse_geocode",
                 new=AsyncMock(
                     side_effect=httpx.ConnectError("Test connection failure")
@@ -44,7 +46,8 @@ class StayPointAddressTests(unittest.IsolatedAsyncioTestCase):
                 user_id=user_id,
             )
 
-        query.eq.assert_called_once_with("user_id", user_id)
+        self.assertEqual(query.eq.call_count, 2)
+        query.eq.assert_called_with("user_id", user_id)
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["duration_minutes"], 15)
         self.assertEqual(result[0]["point_count"], 4)

@@ -1,11 +1,13 @@
 import { Capacitor } from '@capacitor/core';
 import { AuthenticatedRequestError, authenticatedFetch } from '../auth/authenticatedFetch';
+import { toLocationCreateRequest, type LocationCreateRequest } from '../location/LocationApiService';
 import type { DiaryGenerationInput, DiaryGenerationResult, DiaryGenerationService } from './DiaryGenerationService';
 
 interface DiaryGenerateRequest {
   diary_date: string;
   memo?: string;
   transcript?: string;
+  current_location?: LocationCreateRequest;
 }
 
 interface DiaryGenerateResponse {
@@ -34,6 +36,9 @@ export class DiaryGenerationApiService implements DiaryGenerationService {
     const body: DiaryGenerateRequest = { diary_date: input.date };
     if (input.memo?.trim()) body.memo = input.memo.trim();
     if (input.transcript?.trim()) body.transcript = input.transcript.trim();
+    if (input.currentLocation) {
+      body.current_location = toLocationCreateRequest(input.currentLocation);
+    }
     if (body.memo && body.memo.length > 4000) {
       throw new DiaryGenerationError('VALIDATION', '메모는 4000자 이하여야 합니다.');
     }

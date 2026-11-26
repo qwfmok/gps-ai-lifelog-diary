@@ -20,22 +20,21 @@ class NearbyPlace:
     distance_meters: int | None
 
 
-async def find_nearby_place(latitude: float, longitude: float) -> NearbyPlace | None:
-    """Find the nearest named Kakao place in supported category groups."""
+async def find_nearby_places(
+    latitude: float, longitude: float, *, per_category: int = 1
+) -> list[NearbyPlace]:
+    """Find named Kakao places in supported category groups, nearest first."""
     if not KAKAO_REST_API_KEY:
-        return None
+        return []
 
     headers = {"Authorization": f"KakaoAK {KAKAO_REST_API_KEY}"}
     async with httpx.AsyncClient(timeout=8.0) as client:
         results = await asyncio.gather(*(
-            _search_category(client, headers, category, latitude, longitude)
+            _search_category(client, headers, category, latitude, longitude, per_category)
             for category in CATEGORY_GROUPS
         ))
 
-    candidates = [place for place in results if place is not None]
-    if not candidates:
-        return None
-    return min(candidates, key=lambda place: (
+    return sorted((place for group in results for place in group), key=lambda place: (
         place.distance_meters if place.distance_meters is not None else PLACE_SEARCH_RADIUS_METERS + 1
     ))
 
@@ -46,7 +45,8 @@ async def _search_category(
     category: str,
     latitude: float,
     longitude: float,
-) -> NearbyPlace | None:
+    size: int,
+) -> list[NearbyPlace]:
     try:
         response = await client.get(
             KAKAO_CATEGORY_SEARCH_URL,
@@ -57,23 +57,23 @@ async def _search_category(
                 "y": latitude,
                 "radius": PLACE_SEARCH_RADIUS_METERS,
                 "sort": "distance",
-                "size": 1,
+                "size": size,
             },
         )
         response.raise_for_status()
         documents = response.json().get("documents", [])
     except (httpx.HTTPError, ValueError):
-        return None
-    if not documents:
-        return None
-    result = documents[0]
-    if not result.get("place_name"):
-        return None
-    distance = result.get("distance")
-    return NearbyPlace(
-        name=result["place_name"],
-        category=result.get("category_group_name") or result.get("category_name") or "",
-        category_group_code=result.get("category_group_code") or category,
-        address=result.get("road_address_name") or result.get("address_name") or None,
-        distance_meters=int(distance) if distance and str(distance).isdigit() else None,
-    )
+        return []
+    places = []
+    for result in documents:
+        if not result.get("place_name"):
+            continue
+        distance = str(result.get("distance", ""))
+        places.append(NearbyPlace(
+            name=result["place_name"],
+            category=result.get("category_group_name") or result.get("category_name") or "",
+            category_group_code=result.get("category_group_code") or category,
+            address=result.get("road_address_name") or result.get("address_name") or None,
+            distance_meters=int(distance) if distance.isdecimal() else None,
+        ))
+    return places
