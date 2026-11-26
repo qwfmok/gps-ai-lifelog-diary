@@ -26,7 +26,7 @@ export default function HistoryPage() {
           </div>
         )}
 
-        {status === 'error' && (
+        {(status === 'error' || status === 'auth-required' || status === 'configuration-error') && (
           <div className="diary-history__state diary-history__state--error">
             <p role="alert">{error ?? '지난 기록을 불러오지 못했습니다.'}</p>
             <button className="timeline-retry-button" onClick={retry} type="button">

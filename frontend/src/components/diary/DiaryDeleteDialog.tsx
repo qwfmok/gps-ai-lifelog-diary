@@ -83,7 +83,7 @@ export default function DiaryDeleteDialog({
           <p className="page-eyebrow">기록 관리</p>
           <h2 id="diary-delete-title">이 일기를 삭제하시겠습니까?</h2>
           <p id="diary-delete-description">
-            삭제한 기록은 현재 Mock 환경에서 되돌릴 수 없습니다. Timeline과 기억 기록은 삭제되지 않습니다.
+            삭제한 일기는 되돌릴 수 없습니다. Timeline과 기억 기록은 삭제되지 않습니다.
           </p>
           {error && <p className="diary-editor__error" role="alert">{error}</p>}
           {isDeleting && (

@@ -34,7 +34,7 @@ export class MockDiaryService implements DiaryService {
     this.clearGeneratedDraftsForDate(date);
     this.generatedDrafts.set(diary.id, date);
 
-    // Generation returns a preview; persistence remains the responsibility of saveDiary.
+    // Generation returns a preview; persistence remains the responsibility of createDiary.
     return structuredClone(diary);
   }
 
@@ -49,15 +49,19 @@ export class MockDiaryService implements DiaryService {
     return diary ? structuredClone(diary) : null;
   }
 
-  async saveDiary(diary: Diary): Promise<Diary> {
-    const indexById = this.diaries.findIndex((candidate) => candidate.id === diary.id);
-    const index = indexById >= 0
-      ? indexById
-      : this.diaries.findIndex((candidate) => candidate.date === diary.date);
+  async createDiary(diary: Pick<Diary, 'date' | 'content'>): Promise<Diary> {
+    const newDiary: Diary = {
+      id: `diary-${Date.now()}`,
+      date: diary.date,
+      content: diary.content,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const index = this.diaries.findIndex((candidate) => candidate.date === newDiary.date);
     const existing = index >= 0 ? this.diaries[index] : null;
     const savedDiary = {
-      ...structuredClone(diary),
-      createdAt: existing?.createdAt ?? diary.createdAt,
+      ...newDiary,
+      createdAt: existing?.createdAt ?? newDiary.createdAt,
     };
 
     if (index === -1) {
@@ -66,7 +70,7 @@ export class MockDiaryService implements DiaryService {
       this.diaries[index] = savedDiary;
     }
 
-    this.clearGeneratedDraftsForDate(diary.date);
+    this.clearGeneratedDraftsForDate(newDiary.date);
     return structuredClone(savedDiary);
   }
 

@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import type { LocationPoint } from '../../types';
+import { AuthenticatedRequestError, authenticatedFetch } from '../auth/authenticatedFetch';
 
 export interface LocationCreateRequest {
   latitude: number;
@@ -35,6 +36,8 @@ export interface LocationImportResponse {
 export type LocationApiErrorKind =
   | 'CONFIGURATION'
   | 'INSECURE_TRANSPORT'
+  | 'AUTH_CONFIGURATION'
+  | 'AUTHENTICATION'
   | 'NETWORK'
   | 'VALIDATION'
   | 'AUTH'
@@ -79,15 +82,19 @@ export class LocationApiService {
 
     let response: Response;
     try {
-      response = await fetch(`${this.baseUrl}/api/locations`, {
+      response = await this.authenticatedRequest(`${this.baseUrl}/api/locations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request),
       });
-    } catch {
+    } catch (error) {
+      if (error instanceof LocationApiError) throw error;
       throw new LocationApiError('NETWORK', 'Could not reach the location API.');
     }
 
+    if (response.status === 401 || response.status === 403) {
+      throw new LocationApiError('AUTHENTICATION', 'The location API requires a valid login session.');
+    }
     if (response.status === 422) throw new LocationApiError('VALIDATION', 'The location API rejected the request.');
     if (!response.ok) throw new LocationApiError('SERVER', `Location API returned ${response.status}.`);
 
@@ -109,7 +116,7 @@ export class LocationApiService {
     if (!isCalendarDate(date)) throw new LocationApiError('VALIDATION', 'Date must use YYYY-MM-DD format.');
 
     const query = new URLSearchParams({ date });
-    const response = await this.request(`${this.baseUrl}/api/locations?${query.toString()}`);
+    const response = await this.authenticatedRequest(`${this.baseUrl}/api/locations?${query.toString()}`);
     if (!response.ok) this.throwResponseError(response);
 
     let result: unknown;
@@ -179,15 +186,24 @@ export class LocationApiService {
     }
   }
 
-  private async request(url: string, init?: RequestInit): Promise<Response> {
+  private async authenticatedRequest(url: string, init?: RequestInit): Promise<Response> {
     try {
-      return await fetch(url, init);
-    } catch {
+      return await authenticatedFetch(url, init);
+    } catch (error) {
+      if (error instanceof AuthenticatedRequestError) {
+        throw new LocationApiError(
+          error.kind === 'CONFIGURATION' ? 'AUTH_CONFIGURATION' : 'AUTHENTICATION',
+          error.message,
+        );
+      }
       throw new LocationApiError('NETWORK', 'Could not reach the location API.');
     }
   }
 
   private throwResponseError(response: Response): never {
+    if (response.status === 401 || response.status === 403) {
+      throw new LocationApiError('AUTHENTICATION', 'The location API requires a valid login session.');
+    }
     if (response.status === 422) throw new LocationApiError('VALIDATION', 'The location API rejected the request.');
     throw new LocationApiError('SERVER', `Location API returned ${response.status}.`);
   }
